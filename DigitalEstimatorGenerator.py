@@ -2,6 +2,7 @@ import os
 import platform
 
 import FileGenerator
+import SystemVerilogSignal
 import SystemVerilogSyntaxGenerator
 import SystemVerilogPort
 import SystemVerilogPortDirection
@@ -30,6 +31,9 @@ def main():
     ports.append(SystemVerilogPort.SystemVerilogPort("clk", SystemVerilogPortDirection.Input(), SystemVerilogPortType.NoType(), -1, -1))
     ports.append(SystemVerilogPort.SystemVerilogPort("rst", SystemVerilogPortDirection.Input(), SystemVerilogPortType.NoType(), -1, -1))
     main_test_syntax.module_head("Main", parameters, ports)
+    alu_input_0: SystemVerilogSignal.SystemVerilogSignal = main_test_syntax.signal("alu_input_0", SystemVerilogPortType.Logic(), 63, 0, -1, -1)
+    alu_input_1: SystemVerilogSignal.SystemVerilogSignal = main_test_syntax.signal("alu_input_1", SystemVerilogPortType.Logic(), 63, 0, -1, -1)
+    main_test_syntax.assign(alu_input_0, alu_input_1)
     main_test_syntax.close()
 
 if __name__ == '__main__':

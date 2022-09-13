@@ -11,7 +11,12 @@ class Wire(SystemVerilogPortType):
     def __init__(self):
         self.type = "wire"
 
-class Output(SystemVerilogPortType):
+class Reg(SystemVerilogPortType):
 
     def __init__(self):
         self.type = "reg"
+
+class Logic(SystemVerilogPortType):
+
+    def __init__(self):
+        self.type = "logic"
