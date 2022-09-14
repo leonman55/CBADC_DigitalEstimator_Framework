@@ -2,11 +2,14 @@ import FileGenerator
 import SystemVerilogPort
 import SystemVerilogPortType
 import SystemVerilogSignal
+import SystemVerilogClockEdge
 
 
 class SystemVerilogSyntaxGenerator:
     output: FileGenerator.FileGenerator = None
     indentation_level: int = 0
+    combinatorial: bool = 0
+    synchronous: bool = 0
 
     def __init__(self, path: str, name: str):
         self.output = FileGenerator.FileGenerator()
@@ -46,6 +49,9 @@ class SystemVerilogSyntaxGenerator:
         self.port_list(port_list)
         self.blank_line()
 
+    def end_module(self):
+        self.single_line_linebreak("endmodule")
+
     def parameter_list(self, parameter_list: dict):
         if parameter_list is None or len(parameter_list) == 0:
             return
@@ -83,26 +89,67 @@ class SystemVerilogSyntaxGenerator:
         self.indentation_level -= 1
         self.single_line_linebreak(");")
 
-    def signal_representation(self, signal: SystemVerilogPort.SystemVerilogPort, msb: int = -1, lsb: int = -1, array_index: int = -1, array_top: int = -1, array_bottom: int = -1) -> str:
-        if msb < 0 or lsb < 0:
-            if array_index < 0:
-                return signal.port_name
-            else:
-                return signal.port_name + "[" + str(array_index) + "]"
-        else:
-            if array_index < 0:
+    def signal_representation(self, signal: SystemVerilogPort.SystemVerilogPort, msb: int = -1, lsb: int = -1, array_index: int = -1, array_top: int = -1, array_bottom: int = -1, initialization: int = 0) -> str:
+        if initialization == 1:
+            if msb < 0 or lsb < 0:
                 if array_top < 0 or array_bottom < 0:
-                    return signal.port_name + "[" + str(msb) + ":" + str(lsb) + "]"
+                    return signal.port_type.type + " " + signal.port_name + ";"
                 else:
-                    return signal.port_name + "[" + str(msb) + ":" + str(lsb) + "][" + str(array_top) + ":" + str(array_bottom) + "]"
+                    return signal.port_type.type + " " + signal.port_name + " [" + str(array_top) + ":" + str(array_bottom) + "];"
             else:
-                return signal.port_name + "[" + str(msb) + ":" + str(lsb) + "][" + str(array_index) + "]"
+                if array_top < 0 or array_bottom < 0:
+                    return signal.port_type.type + " [" + str(signal.port_msb) + ":" + str(signal.port_lsb) + "] " + signal.port_name + ";"
+                else:
+                    return signal.port_type.type + " [" + str(signal.port_msb) + ":" + str(signal.port_lsb) + "] " + signal.port_name + " [" + str(array_top) + ":" + str(array_bottom) + "];"
+        else:
+            if msb < 0 or lsb < 0:
+                if array_index < 0:
+                    return signal.port_name
+                else:
+                    return signal.port_name + "[" + str(array_index) + "]"
+            else:
+                if array_index < 0:
+                    if array_top < 0 or array_bottom < 0:
+                        return signal.port_name + "[" + str(msb) + ":" + str(lsb) + "]"
+                    else:
+                        return signal.port_name + "[" + str(msb) + ":" + str(lsb) + "][" + str(array_top) + ":" + str(array_bottom) + "]"
+                else:
+                    return signal.port_name + "[" + str(msb) + ":" + str(lsb) + "][" + str(array_index) + "]"
 
     def signal(self, signal_name: str, signal_type: SystemVerilogPortType.SystemVerilogPortType, signal_msb: int, signal_lsb: int, signal_array_top: int, signal_array_bottom: int):
         signal = SystemVerilogSignal.SystemVerilogSignal(signal_name, signal_type, signal_msb, signal_lsb, signal_array_top, signal_array_bottom)
-        self.single_line_linebreak(signal.port_type.type + " " + self.signal_representation(signal, signal.port_msb, signal.port_lsb, -1, signal.signal_array_top, signal.signal_array_bottom))
+        self.single_line_linebreak(self.signal_representation(signal, signal.port_msb, signal.port_lsb, -1, signal.signal_array_top, signal.signal_array_bottom, 1))
         return signal
 
     def assign(self, left_side: SystemVerilogPort.SystemVerilogPort, right_side: SystemVerilogPort.SystemVerilogPort, left_side_msb: int = -1, left_side_lsb: int = -1, left_side_array_index: int = -1, right_side_msb: int = -1, right_side_lsb: int = -1, rifht_side_array_index: int = -1):
-        #issubclass()
-        self.single_line_linebreak("assign " + self.signal_representation(left_side, left_side_msb, left_side_lsb, left_side_array_index) + " = " + self.signal_representation(right_side, right_side_msb, right_side_lsb, rifht_side_array_index))
+        if self.combinatorial == 1:
+            self.single_line_linebreak(self.signal_representation(left_side,left_side_msb, left_side_lsb, left_side_array_index) + " = " + self.signal_representation(right_side, right_side_msb, right_side_lsb, rifht_side_array_index) + ";")
+        elif self.synchronous == 1:
+            self.single_line_linebreak(self.signal_representation(left_side, left_side_msb, left_side_lsb, left_side_array_index) + " <= " + self.signal_representation(right_side, right_side_msb, right_side_lsb, rifht_side_array_index) + ";")
+        else:
+            self.single_line_linebreak("assign " + self.signal_representation(left_side, left_side_msb, left_side_lsb, left_side_array_index) + " = " + self.signal_representation(right_side, right_side_msb, right_side_lsb, rifht_side_array_index) + ";")
+
+    def always_combinatorial(self):
+        self.combinatorial = bool(1)
+        self.single_line_linebreak("always_comb begin")
+        self.indentation_level += 1
+
+    def always_synchronous(self, sensitivity_list: dict):
+        self.synchronous = bool(1)
+        sensitivity_list_string: str = ""
+        count_signals: int = 0
+        for signal in sensitivity_list.keys():
+            count_signals += 1
+            edge_type: SystemVerilogClockEdge.SystemVerilogClockEdge = sensitivity_list.get(signal)
+            if count_signals == len(sensitivity_list):
+                sensitivity_list_string += edge_type.edge_type + " " + signal.port_name
+            else:
+                sensitivity_list_string += edge_type.edge_type + " " + signal.port_name + ", "
+        self.single_line_linebreak("always_ff @(" + sensitivity_list_string + ") begin")
+        self.indentation_level += 1
+
+    def end_always(self):
+        self.combinatorial = bool(0)
+        self.synchronous = bool(0)
+        self.indentation_level -= 1
+        self.single_line_linebreak("end")
