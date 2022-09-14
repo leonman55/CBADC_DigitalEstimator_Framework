@@ -46,6 +46,8 @@ class SystemVerilogSyntaxGenerator:
         if parameter_list is not None and len(parameter_list) != 0:
             self.parameter_list(parameter_list)
             self.single_line_no_linebreak(" ", bool(0))
+        else:
+            self.indentation_level += 1
         self.port_list(port_list)
         self.blank_line()
 
@@ -153,3 +155,28 @@ class SystemVerilogSyntaxGenerator:
         self.synchronous = bool(0)
         self.indentation_level -= 1
         self.single_line_linebreak("end")
+
+    def module_instance(self, module_name: str, instance_name: str, parameter_list: dict[str, str], port_list: list[SystemVerilogPort.SystemVerilogPort], connections: dict[SystemVerilogPort.SystemVerilogPort, SystemVerilogPort.SystemVerilogPort]):
+        self.single_line_no_linebreak(module_name)
+        self.indentation_level += 1
+        if parameter_list is not None and len(parameter_list) > 0:
+            self.single_line_linebreak(" #(", False)
+            count_parameters: int = 0
+            for parameter in parameter_list:
+                count_parameters += 1
+                if count_parameters == len(parameter_list):
+                    self.single_line_linebreak("." + parameter + "(" + parameter_list.get(parameter) + ")")
+                else:
+                    self.single_line_linebreak("." + parameter + "(" + parameter_list.get(parameter) + "),")
+            self.single_line_linebreak(")")
+        self.single_line_linebreak(instance_name + " (")
+        count_ports: int = 0
+        for module_port in connections:
+            count_ports += 1
+            if count_ports == len(connections):
+                self.single_line_linebreak("." + module_port.port_name + "(" + connections.get(module_port).port_name + ")")
+            else:
+                self.single_line_linebreak("." + module_port.port_name + "(" + connections.get(module_port).port_name + "),")
+        self.indentation_level -= 1
+        self.single_line_linebreak(");")
+        self.blank_line()
