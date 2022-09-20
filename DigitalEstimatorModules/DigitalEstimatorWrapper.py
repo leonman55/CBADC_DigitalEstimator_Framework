@@ -17,6 +17,9 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         self.rst = self.add_port("rst", SystemVerilogPortDirection.Input(), SystemVerilogPortType.NoType(), -1, -1)
 
         test_module: DigitalEstimatorModules.TestModule.TestModule = DigitalEstimatorModules.TestModule.TestModule(self.path, "TestModule")
+        test_module.parameter_width = {"alu_width": "32"}
+        test_module.parameter_length = {"alu_input_channels": "2"}
+        test_module.parameter_alus = {"ALUS": "1"}
         test_module.generate()
         test_module_port_connections: dict[SystemVerilogPort.SystemVerilogPort, SystemVerilogPort.SystemVerilogPort] = dict[SystemVerilogPort.SystemVerilogPort, SystemVerilogPort.SystemVerilogPort]()
         test_module_port_connections[test_module.clk] = self.clk

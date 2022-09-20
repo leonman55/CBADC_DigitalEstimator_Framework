@@ -52,7 +52,7 @@ class SystemVerilogSyntaxGenerator:
         self.blank_line()
 
     def end_module(self):
-        self.single_line_linebreak("endmodule")
+        self.single_line_no_linebreak("endmodule")
 
     def parameter_list(self, parameter_list: dict):
         if parameter_list is None or len(parameter_list) == 0:
