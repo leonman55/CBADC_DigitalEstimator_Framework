@@ -11,6 +11,7 @@ import SystemVerilogClockEdge
 import SystemVerilogModule
 import DigitalEstimatorModules.TestModule
 import DigitalEstimatorModules.DigitalEstimatorWrapper
+import DigitalEstimatorVerificationModules.DigitalEstimatorTestbench
 
 
 def main():
@@ -20,9 +21,13 @@ def main():
     elif platform.system() == "Windows":
         path = ".\\GeneratedSystemVerilogFiles\\"
 
-    name = "DigitalEstimatorWrapper"
-    digital_estimator_wrapper: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper(path, name)
-    digital_estimator_wrapper.generate()
+    #name = "DigitalEstimatorWrapper"
+    #digital_estimator_wrapper: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper(path, name)
+    #digital_estimator_wrapper.generate()
+
+    name = "DigitalEstimatorTestbench"
+    digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(path, name)
+    digital_estimator_testbench.generate()
 
 
 if __name__ == '__main__':

@@ -15,3 +15,9 @@ class SystemVerilogPort:
         self.port_type = port_type
         self.port_msb = port_msb
         self.port_lsb = port_lsb
+
+    def __lt__(self, other):
+        if isinstance(other, SystemVerilogPort):
+            return self.port_name < other.port_name
+        else:
+            return 0

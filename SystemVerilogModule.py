@@ -32,7 +32,7 @@ class SystemVerilogModule:
         self.port_list.append(new_port)
         return new_port
 
-    def add_signal(self, name: str, type: SystemVerilogPortType.SystemVerilogPortType, msb: int, lsb: int, array_top: int, array_bottom: int) -> SystemVerilogSignal:
+    def add_signal(self, name: str, type: SystemVerilogPortType.SystemVerilogPortType, msb: int = -1, lsb: int = -1, array_top: int = -1, array_bottom: int = -1) -> SystemVerilogSignal:
         return self.syntax_generator.signal(name, type, msb, lsb, array_top, array_bottom)
 
     def add_submodule(self, new_submodule, connections: dict[SystemVerilogPort.SystemVerilogPort, SystemVerilogPort.SystemVerilogPort]):
