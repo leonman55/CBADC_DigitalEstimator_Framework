@@ -17,9 +17,11 @@ import DigitalEstimatorVerificationModules.DigitalEstimatorTestbench
 def main():
     path: str = ""
     if platform.system() == "Linux":
-        path = "./GeneratedSystemVerilogFiles/"
+        #path = "./GeneratedSystemVerilogFiles/"
+        path = "../df/src/"
     elif platform.system() == "Windows":
-        path = ".\\GeneratedSystemVerilogFiles\\"
+        path = "..\\df\\src\\"
+        #path = ".\\GeneratedSystemVerilogFiles\\"
 
     #name = "DigitalEstimatorWrapper"
     #digital_estimator_wrapper: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper(path, name)

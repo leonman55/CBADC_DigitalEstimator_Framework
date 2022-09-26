@@ -53,7 +53,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         dut: DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper = DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper(self.path, "DigitalEstimator")
         set_parameter_value_by_parameter(self.parameter_alu_input_width, dut.parameter_alu_input_width)
         dut.generate()
-        dut_port_connections: dict[SystemVerilogPort, SystemVerilogPort] = dict[SystemVerilogPort, SystemVerilogPort]()
+        dut_port_connections: dict[SystemVerilogPort.SystemVerilogPort, SystemVerilogPort.SystemVerilogPort] = dict[SystemVerilogPort.SystemVerilogPort, SystemVerilogPort.SystemVerilogPort]()
         dut_port_connections[dut.clk] = clk
         dut_port_connections[dut.rst] = rst
         dut_port_connections.update(connect_port_array(alu_inputs, dut.adder_input))
