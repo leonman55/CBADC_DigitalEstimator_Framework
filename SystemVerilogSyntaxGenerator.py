@@ -188,6 +188,11 @@ class SystemVerilogSyntaxGenerator:
         else:
             self.single_line_linebreak("assign " + self.signal_representation(left_side, left_side_msb, left_side_lsb, left_side_array_index) + " = " + right_side + ";")
 
+    def always(self):
+        self.combinatorial = bool(1)
+        self.single_line_linebreak("always begin")
+        self.indentation_level += 1
+
     def always_combinatorial(self):
         self.combinatorial = bool(1)
         self.single_line_linebreak("always_comb begin")
@@ -269,7 +274,7 @@ class SystemVerilogSyntaxGenerator:
         self.single_line_linebreak("#" + str(number_of_timesteps) + ";")
 
     def generate_clock(self, clock_signal: SystemVerilogSignal.SystemVerilogSignal, number_of_cycle_timesteps: int):
-        self.always_combinatorial()
+        self.always()
         self.assign_construct(clock_signal, "1'b0")
         self.wait_timesteps(int(number_of_cycle_timesteps / 2))
         self.assign_construct(clock_signal, "1'b1")
@@ -282,3 +287,7 @@ class SystemVerilogSyntaxGenerator:
 
     def assert_signal_construct(self, left_side: SystemVerilogPort.SystemVerilogPort, right_side: str, comparison_operator: SystemVerilogComparisonOperator, show_pass_message: bool = False, show_fail_message: bool = False):
         self.single_line_linebreak("assert (" + self.signal_representation(left_side) + " " + comparison_operator.operator + " " + right_side + ");")
+
+    def finish(self):
+        self.single_line_linebreak("$finish;")
+        

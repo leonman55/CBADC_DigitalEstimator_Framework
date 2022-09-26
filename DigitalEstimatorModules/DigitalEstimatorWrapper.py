@@ -43,7 +43,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         simple_adder_port_connections[simple_adder.rst] = self.rst
         adder_input_0: SystemVerilogPort.SystemVerilogPort = self.add_port("adder_input_0", SystemVerilogPortDirection.Input(), SystemVerilogPortType.NoType(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
         self.adder_input.append(adder_input_0)
-        adder_input_1: SystemVerilogPort.SystemVerilogPort = self.add_port("adder_input_0", SystemVerilogPortDirection.Input(), SystemVerilogPortType.NoType(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
+        adder_input_1: SystemVerilogPort.SystemVerilogPort = self.add_port("adder_input_1", SystemVerilogPortDirection.Input(), SystemVerilogPortType.NoType(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
         self.adder_input.append(adder_input_1)
         simple_adder_port_connections.update(connect_port_array(simple_adder.alu_input, self.adder_input))
         self.adder_output = self.add_port("adder_output", SystemVerilogPortDirection.Output(), SystemVerilogPortType.NoType(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
@@ -51,6 +51,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
 
         self.add_submodule(simple_adder, simple_adder_port_connections)
 
+        self.syntax_generator.timescale()
         self.syntax_generator.module_head(self.name, self.parameter_list, self.port_list)
         #count_modules: int = 0
         #module: SystemVerilogModule.SystemVerilogModule = None

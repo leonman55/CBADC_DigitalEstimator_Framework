@@ -32,8 +32,9 @@ class SimpleAdder(SystemVerilogModule.SystemVerilogModule):
         self.alu_input.append(alu_input_0)
         alu_input_1 = self.add_port("alu_input_1", SystemVerilogPortDirection.Input(), SystemVerilogPortType.NoType(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
         self.alu_input.append(alu_input_1)
-        self.alu_output = self.add_port("alu_output", SystemVerilogPortDirection.Output(), SystemVerilogPortType.NoType(), int(get_parameter_value(self.parameter_alu_output_width)) - 1, 0)
+        self.alu_output = self.add_port("alu_output", SystemVerilogPortDirection.Output(), SystemVerilogPortType.Logic(), int(get_parameter_value(self.parameter_alu_output_width)) - 1, 0)
 
+        self.syntax_generator.timescale()
         self.syntax_generator.module_head(self.name, self.parameter_list, self.port_list)
         self.syntax_generator.always_synchronous({self.clk: SystemVerilogClockEdge.SystemVerilogPosedge(), self.rst: SystemVerilogClockEdge.SystemVerilogNegedge()})
         self.syntax_generator.add_signals(self.alu_output, alu_input_0, alu_input_1)

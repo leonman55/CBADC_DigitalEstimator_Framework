@@ -28,9 +28,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         clk: SystemVerilogSignal.SystemVerilogSignal = self.add_signal("clk", SystemVerilogPortType.Logic())
         rst: SystemVerilogSignal.SystemVerilogSignal = self.add_signal("rst", SystemVerilogPortType.Logic())
         alu_inputs: list[SystemVerilogSignal.SystemVerilogSignal] = list[SystemVerilogSignal.SystemVerilogSignal]()
-        alu_input_0: SystemVerilogSignal.SystemVerilogSignal = self.add_signal("alu_input_0", SystemVerilogPortType.Logic(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
+        alu_input_0: SystemVerilogSignal.SystemVerilogSignal = self.add_signal("input_0", SystemVerilogPortType.Logic(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
         alu_inputs.append(alu_input_0)
-        alu_input_1: SystemVerilogSignal.SystemVerilogSignal = self.add_signal("alu_input_1", SystemVerilogPortType.Logic(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
+        alu_input_1: SystemVerilogSignal.SystemVerilogSignal = self.add_signal("input_1", SystemVerilogPortType.Logic(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
         alu_inputs.append(alu_input_1)
         alu_output: SystemVerilogSignal.SystemVerilogSignal = self.add_signal("alu_output", SystemVerilogPortType.Logic(), int(get_parameter_value(self.parameter_alu_input_width)) - 1, 0)
         self.syntax_generator.blank_line()
@@ -48,6 +48,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             self.syntax_generator.wait_timesteps(self.configuration_number_of_timesteps_in_clock_cycle)
             self.syntax_generator.assert_signal_construct(alu_output, decimal_number(result_alu_output), Equal)
             self.syntax_generator.blank_line()
+        self.syntax_generator.finish()
         self.syntax_generator.end_initial()
 
         dut: DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper = DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper(self.path, "DigitalEstimator")
@@ -56,7 +57,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         dut_port_connections: dict[SystemVerilogPort.SystemVerilogPort, SystemVerilogPort.SystemVerilogPort] = dict[SystemVerilogPort.SystemVerilogPort, SystemVerilogPort.SystemVerilogPort]()
         dut_port_connections[dut.clk] = clk
         dut_port_connections[dut.rst] = rst
-        dut_port_connections.update(connect_port_array(alu_inputs, dut.adder_input))
+        dut_port_connections.update(connect_port_array(dut.adder_input, alu_inputs))
+        dut_port_connections[dut.adder_output] = alu_output
 
         self.add_submodule(dut, dut_port_connections)
 

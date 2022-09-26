@@ -18,9 +18,9 @@ def main():
     path: str = ""
     if platform.system() == "Linux":
         #path = "./GeneratedSystemVerilogFiles/"
-        path = "../df/src/"
+        path = "../df/sim/"
     elif platform.system() == "Windows":
-        path = "..\\df\\src\\"
+        path = "..\\df\\sim\\"
         #path = ".\\GeneratedSystemVerilogFiles\\"
 
     #name = "DigitalEstimatorWrapper"
