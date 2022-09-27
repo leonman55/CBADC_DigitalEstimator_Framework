@@ -286,11 +286,47 @@ class SystemVerilogSyntaxGenerator:
         self.blank_line()
 
     def assert_signals(self, left_side: SystemVerilogPort.SystemVerilogPort, right_side: SystemVerilogPort.SystemVerilogPort, comparison_operator: SystemVerilogComparisonOperator, show_pass_message: bool = False, show_fail_message: bool = False):
-        self.single_line_linebreak("assert (" + self.signal_representation(left_side) + " " + comparison_operator.operator + " " + self.signal_representation(right_side) + ");")
+        if show_pass_message == False and show_fail_message == False:
+            self.single_line_linebreak("assert (" + self.signal_representation(left_side) + " " + comparison_operator.operator + " " + self.signal_representation(right_side) + ");")
+        else:
+            self.single_line_linebreak("assert (" + self.signal_representation(left_side) + " " + comparison_operator.operator + " " + self.signal_representation(right_side) + ")")
+            if show_pass_message == True:
+                self.indentation_level += 1
+                self.display_pass_message_port_port(left_side, right_side)
+                self.indentation_level -= 1
+            if show_fail_message == True:
+                self.single_line_linebreak("else")
+                self.indentation_level += 1
+                self.display_expected_value_port_port(left_side, right_side)
+                self.indentation_level -=1
 
     def assert_signal_construct(self, left_side: SystemVerilogPort.SystemVerilogPort, right_side: str, comparison_operator: SystemVerilogComparisonOperator, show_pass_message: bool = False, show_fail_message: bool = False):
-        self.single_line_linebreak("assert (" + self.signal_representation(left_side) + " " + comparison_operator.operator + " " + right_side + ");")
+        if show_pass_message == False and show_fail_message == False:
+            self.single_line_linebreak("assert (" + self.signal_representation(left_side) + " " + comparison_operator.operator + " " + right_side + ");")
+        else:
+            self.single_line_linebreak("assert (" + self.signal_representation(left_side) + " " + comparison_operator.operator + " " + right_side + ")")
+            if show_pass_message == True:
+                self.indentation_level += 1
+                self.display_pass_message_port_value(left_side, right_side)
+                self.indentation_level -= 1
+            if show_fail_message == True:
+                self.single_line_linebreak("else")
+                self.indentation_level += 1
+                self.display_expected_value_port_value(left_side, right_side)
+                self.indentation_level -=1
 
+    def display_pass_message_port_value(self, signal: SystemVerilogPort.SystemVerilogPort, expected_value: str):
+        self.single_line_linebreak("$display(\"PASS: The signal: " + signal.port_name + " has the expected value: " + expected_value + ".\");")
+
+    def display_pass_message_port_port(self, signal: SystemVerilogPort.SystemVerilogPort, expected_value_port: SystemVerilogPort.SystemVerilogPort):
+        self.single_line_linebreak("$display(\"PASS: The signal: " + signal.port_name + " has the expected value: %d.\", " + expected_value_port.port_name + ");")
+
+    def display_expected_value_port_value(self, signal: SystemVerilogPort.SystemVerilogPort, expected_value: str):
+        self.single_line_linebreak("$display(\"FAIL: The signal: " + signal.port_name + " was expected to have the value: " + expected_value + ", but it has value: %d\", " + signal.port_name + ");")
+
+    def display_expected_value_port_port(self, signal: SystemVerilogPort.SystemVerilogPort, expected_value_port: SystemVerilogPort.SystemVerilogPort):
+        self.single_line_linebreak("$display(\"FAIL: The signal: " + signal.port_name + " was expected to be the same as: " + expected_value_port.port_name + ", but the values are: %d\t%d\", " + signal.port_name + ", " + expected_value_port.port_name + ");")
+        
     def finish(self):
         self.single_line_linebreak("$finish;")
         

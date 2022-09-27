@@ -50,7 +50,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             for value in values_alu_inputs:
                 result_alu_output += value
             self.syntax_generator.wait_timesteps(self.configuration_number_of_timesteps_in_clock_cycle)
-            self.syntax_generator.assert_signal_construct(alu_output, decimal_number(result_alu_output), Equal)
+            self.syntax_generator.assert_signal_construct(alu_output, decimal_number(result_alu_output), Equal, True, True)
             self.syntax_generator.blank_line()
         self.syntax_generator.finish()
         self.syntax_generator.end_initial()

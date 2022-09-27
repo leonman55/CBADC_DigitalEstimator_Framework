@@ -1,3 +1,4 @@
+from asyncio.subprocess import PIPE
 import os
 import platform
 import subprocess
@@ -33,8 +34,14 @@ def main():
     digital_estimator_testbench.generate()
 
     #sim_xrun: subprocess.CompletedProcess = subprocess.run(path + "sim.sh", shell = True)
-    sim_xrun = subprocess.Popen([path + "sim.sh"], shell = True)
+    sim_xrun = subprocess.Popen([path + "sim.sh"], stdout = PIPE, text = True, shell = True)
     sim_xrun.wait()
+    while True:
+        line: str = sim_xrun.stdout.readline().removesuffix("\n")
+        if line == "":
+            break
+        else:
+            print(line)
 
 
 if __name__ == '__main__':
