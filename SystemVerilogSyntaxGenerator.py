@@ -32,7 +32,10 @@ def connect_port_array(external_ports: list[SystemVerilogPort.SystemVerilogPort]
     return port_connections
 
 def decimal_number(value: int) -> str:
-    number_of_bits: int = math.ceil(math.log2(value))
+    if value == 0:
+        number_of_bits = 1
+    else:
+        number_of_bits: int = math.ceil(math.log2(value))
     return str(number_of_bits) + "'d" + str(value)
 
 

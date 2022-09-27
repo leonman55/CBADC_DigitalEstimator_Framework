@@ -1,5 +1,6 @@
 import os
 import platform
+import subprocess
 
 import FileGenerator
 import SystemVerilogSignal
@@ -30,6 +31,10 @@ def main():
     name = "DigitalEstimatorTestbench"
     digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(path, name)
     digital_estimator_testbench.generate()
+
+    #sim_xrun: subprocess.CompletedProcess = subprocess.run(path + "sim.sh", shell = True)
+    sim_xrun = subprocess.Popen([path + "sim.sh"], shell = True)
+    sim_xrun.wait()
 
 
 if __name__ == '__main__':

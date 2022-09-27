@@ -36,6 +36,10 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         self.syntax_generator.blank_line()
         self.syntax_generator.generate_clock(clk, self.configuration_number_of_timesteps_in_clock_cycle)
         self.syntax_generator.initial()
+        self.syntax_generator.assign_construct(rst, decimal_number(0))
+        for alu_input in alu_inputs:
+            self.syntax_generator.assign_construct(alu_input, decimal_number(0))
+        self.syntax_generator.blank_line()
         for stimuli_counter in range(5):
             values_alu_inputs: list[int] = list[int]()
             for alu_input in alu_inputs:

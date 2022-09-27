@@ -23,8 +23,9 @@ class SimpleAdder(SystemVerilogModule.SystemVerilogModule):
 
     def generate(self):
         self.parameter_alu_input_width = self.add_parameter(self.parameter_alu_input_width)
-        if next(iter(self.parameter_alu_output_width)) == "0":
+        if self.parameter_alu_output_width[next(iter(self.parameter_alu_output_width))] == "0":
             set_parameter_value_by_parameter(self.parameter_alu_output_width, self.parameter_alu_input_width)
+        self.parameter_alu_output_width = self.add_parameter(self.parameter_alu_output_width)
 
         self.clk = self.add_port("clk", SystemVerilogPortDirection.Input(), SystemVerilogPortType.NoType(), -1, -1)
         self.rst = self.add_port("rst", SystemVerilogPortDirection.Input(), SystemVerilogPortType.NoType(), -1, -1)
