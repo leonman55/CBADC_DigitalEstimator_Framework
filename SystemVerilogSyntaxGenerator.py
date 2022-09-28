@@ -44,6 +44,7 @@ class SystemVerilogSyntaxGenerator:
     indentation_level: int = 0
     combinatorial: bool = 0
     synchronous: bool = 0
+    assertion_count: int = 0
 
     def __init__(self, path: str, name: str):
         self.output = FileGenerator.FileGenerator()
@@ -286,6 +287,7 @@ class SystemVerilogSyntaxGenerator:
         self.blank_line()
 
     def assert_signals(self, left_side: SystemVerilogPort.SystemVerilogPort, right_side: SystemVerilogPort.SystemVerilogPort, comparison_operator: SystemVerilogComparisonOperator, show_pass_message: bool = False, show_fail_message: bool = False):
+        self.assertion_count += 1
         if show_pass_message == False and show_fail_message == False:
             self.single_line_linebreak("assert (" + self.signal_representation(left_side) + " " + comparison_operator.operator + " " + self.signal_representation(right_side) + ");")
         else:
@@ -301,6 +303,7 @@ class SystemVerilogSyntaxGenerator:
                 self.indentation_level -=1
 
     def assert_signal_construct(self, left_side: SystemVerilogPort.SystemVerilogPort, right_side: str, comparison_operator: SystemVerilogComparisonOperator, show_pass_message: bool = False, show_fail_message: bool = False):
+        self.assertion_count += 1
         if show_pass_message == False and show_fail_message == False:
             self.single_line_linebreak("assert (" + self.signal_representation(left_side) + " " + comparison_operator.operator + " " + right_side + ");")
         else:
