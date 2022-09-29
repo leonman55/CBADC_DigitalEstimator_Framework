@@ -60,3 +60,5 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             #count_modules += 1
         self.syntax_generator.instantiate_submodules(self.submodules)
         self.syntax_generator.end_module()
+        self.syntax_generator.close()
+        

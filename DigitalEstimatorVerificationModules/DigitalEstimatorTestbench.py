@@ -70,3 +70,4 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
         self.syntax_generator.blank_line()
         self.syntax_generator.end_module()
+        self.syntax_generator.close()

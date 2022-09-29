@@ -40,12 +40,11 @@ def main():
     options.append("-top " + digital_estimator_testbench.name)
     write_options_file(path, "xrun_options", options)
     #sim_xrun: subprocess.CompletedProcess = subprocess.run(sim_folder + "sim.sh", shell = True)
-    sim_xrun = subprocess.Popen([sim_folder + "sim.sh"], stdout = PIPE, text = True, shell = True)
+    sim_xrun = subprocess.Popen(["./sim.sh"], cwd = sim_folder, stdout = PIPE, text = True, shell = True)
     sim_xrun.wait()
     pass_count: int = 0
     fail_count: int = 0
     while True:
-        
         line: str = sim_xrun.stdout.readline().removesuffix("\n")
         if line == "":
             break
