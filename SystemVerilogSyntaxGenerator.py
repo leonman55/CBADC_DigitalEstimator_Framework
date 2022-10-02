@@ -1,10 +1,14 @@
 import math
+from threading import local
 
 import FileGenerator
 import SystemVerilogModule
 import SystemVerilogPort
 import SystemVerilogPortType
+import SystemVerilogSignalSign
+import SystemVerilogDimension
 import SystemVerilogSignal
+import SystemVerilogLocalParameter
 import SystemVerilogClockEdge
 from SystemVerilogComparisonOperator import *
 
@@ -35,7 +39,7 @@ def decimal_number(value: int) -> str:
     if value == 0:
         number_of_bits = 1
     else:
-        number_of_bits: int = math.ceil(math.log2(value))
+        number_of_bits: int = math.ceil(math.log2(value + 1))
     return str(number_of_bits) + "'d" + str(value)
 
 
@@ -175,6 +179,27 @@ class SystemVerilogSyntaxGenerator:
         signal = SystemVerilogSignal.SystemVerilogSignal(signal_name, signal_type, signal_msb, signal_lsb, signal_array_top, signal_array_bottom)
         self.single_line_linebreak(self.signal_representation(signal, signal.port_msb, signal.port_lsb, -1, signal.signal_array_top, signal.signal_array_bottom, 1))
         return signal
+
+    def local_parameter(self, name: str, type: SystemVerilogPortType.SystemVerilogPortType = SystemVerilogPortType.NoType(),
+        sign: SystemVerilogSignalSign.SystemVerilogSignalSign = SystemVerilogSignalSign.NoSign(), msb: int = 0, lsb: int = 0,
+        dimensions: list[SystemVerilogDimension.SystemVerilogDimension] = list[SystemVerilogDimension.SystemVerilogDimension](),
+        values: str = "") -> SystemVerilogLocalParameter.SystemVerilogLocalParameter:
+        local_parameter: SystemVerilogLocalParameter.SystemVerilogLocalParameter = SystemVerilogLocalParameter.SystemVerilogLocalParameter(name, type, sign, msb, lsb, dimensions, values)
+        initialization_string: str = ""
+        initialization_string += "localparam"
+        if not isinstance(local_parameter.type, SystemVerilogPortType.NoType):
+            initialization_string += " " + local_parameter.type.type
+        if not isinstance(local_parameter.sign, SystemVerilogSignalSign.NoSign):
+            initialization_string += " " + local_parameter.sign.type
+        initialization_string += " [" + str(local_parameter.msb) + ":" + str(local_parameter.lsb) + "]"
+        initialization_string += " " + local_parameter.name
+        dimension: SystemVerilogDimension.SystemVerilogDimension = None
+        for dimension in local_parameter.dimensions:
+            initialization_string += dimension.get_representation()
+        initialization_string += " = "
+        initialization_string += values
+        self.single_line_linebreak(initialization_string)
+        self.blank_line()
 
     def assign(self, left_side: SystemVerilogPort.SystemVerilogPort, right_side: SystemVerilogPort.SystemVerilogPort, left_side_msb: int = -1, left_side_lsb: int = -1, left_side_array_index: int = -1, right_side_msb: int = -1, right_side_lsb: int = -1, rifht_side_array_index: int = -1):
         if self.combinatorial == 1:

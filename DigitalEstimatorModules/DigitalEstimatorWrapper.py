@@ -2,10 +2,13 @@ import SystemVerilogModule
 import SystemVerilogPort
 import SystemVerilogPortDirection
 import SystemVerilogPortType
+import SystemVerilogDimension
 import DigitalEstimatorModules.TestModule
 import DigitalEstimatorModules.SimpleAdder
-from SystemVerilogSyntaxGenerator import get_parameter_value
-from SystemVerilogSyntaxGenerator import connect_port_array
+import SystemVerilogSignalSign
+from SystemVerilogSyntaxGenerator import decimal_number, get_parameter_value, connect_port_array
+import CBADC_HighLevelSimulation
+import cbadc
 
 
 class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
@@ -51,6 +54,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
 
         self.add_submodule(simple_adder, simple_adder_port_connections)
 
+        digital_estimator_fir: cbadc.digital_estimator.FIRFilter = CBADC_HighLevelSimulation.simulate_digital_estimator_fir()
+
         self.syntax_generator.timescale()
         self.syntax_generator.module_head(self.name, self.parameter_list, self.port_list)
         #count_modules: int = 0
@@ -58,6 +63,18 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         #for module in self.submodules.keys():
             #self.syntax_generator.module_instance(module.name, module.name + "_" + str(count_modules), module.parameter_list, module.port_list, self.submodules.get(module))
             #count_modules += 1
+
+        dimensions: list[SystemVerilogDimension.SystemVerilogDimension] = list[SystemVerilogDimension.SystemVerilogDimension]()
+        test_dimension: SystemVerilogDimension.SystemVerilogDimension = SystemVerilogDimension.SystemVerilogDimension(63, 0)
+        dimensions.append(test_dimension)
+        values: str = "{"
+        for index in range(64):
+            if index == 63:
+                values += decimal_number(index) + "};"
+            else:
+                values += decimal_number(index) + ", "
+        h_matrix = self.syntax_generator.local_parameter("h", SystemVerilogPortType.Logic(), SystemVerilogSignalSign.Signed(), 63, 0, dimensions, values)
+
         self.syntax_generator.instantiate_submodules(self.submodules)
         self.syntax_generator.end_module()
         self.syntax_generator.close()

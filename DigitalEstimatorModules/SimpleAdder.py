@@ -37,7 +37,7 @@ class SimpleAdder(SystemVerilogModule.SystemVerilogModule):
 
         self.syntax_generator.timescale()
         self.syntax_generator.module_head(self.name, self.parameter_list, self.port_list)
-        self.syntax_generator.always_synchronous({self.clk: SystemVerilogClockEdge.SystemVerilogPosedge(), self.rst: SystemVerilogClockEdge.SystemVerilogNegedge()})
+        self.syntax_generator.always_synchronous({self.clk: SystemVerilogClockEdge.SystemVerilogPosedge()})
         self.syntax_generator.add_signals(self.alu_output, alu_input_0, alu_input_1)
         self.syntax_generator.end_always()
         self.syntax_generator.blank_line()
