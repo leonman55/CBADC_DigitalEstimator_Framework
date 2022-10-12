@@ -1,6 +1,8 @@
 import math
 from threading import local
 
+from numpy import array_str, ndarray
+
 import FileGenerator
 import SystemVerilogModule
 import SystemVerilogPort
@@ -13,7 +15,7 @@ import SystemVerilogClockEdge
 from SystemVerilogComparisonOperator import *
 
 
-def set_parameter_value(parameter: dict[str, str], value):
+def set_parameter_value(parameter: dict[str, str], value: str):
     parameter[next(iter(parameter))] = value
 
 def set_parameter_value_by_parameter(parameter: dict[str, str], source_parameter: dict[str, str]):
@@ -39,8 +41,43 @@ def decimal_number(value: int) -> str:
     if value == 0:
         number_of_bits = 1
     else:
-        number_of_bits: int = math.ceil(math.log2(value + 1))
-    return str(number_of_bits) + "'d" + str(value)
+        number_of_bits: int = math.ceil(math.log2(abs(value) + 1))
+    if value < 0:
+        return "-" + str(number_of_bits) + "'d" + str(abs(value))
+    else:
+        return str(number_of_bits) + "'d" + str(value)
+
+def ndarray_to_system_verilog_array(input_array: ndarray) -> str:
+    total_number_of_elements: int = 1
+    dimensions: list[int] = list[int]()
+    array_string: str = ""
+    for dimension_index in range(len(input_array.shape)):
+        total_number_of_elements *= input_array.shape[dimension_index]
+        if input_array.shape[dimension_index] != 1:
+            array_string += "'{"
+            dimensions.append(input_array.shape[dimension_index])
+    input_array_flattened = input_array.reshape(total_number_of_elements)
+    dimension_breaks: list[int] = dimensions.copy()
+    for dimension_index in range(len(dimensions) - 1, -1, -1):
+        if dimension_index == len(dimensions) - 1:
+            continue
+        else:
+            dimension_breaks[dimension_index] = dimension_breaks[dimension_index] * dimension_breaks[dimension_index + 1]
+    print("Total number of elements: ", total_number_of_elements)
+    print("Dimensions: ", dimensions)
+    print("Dimension breaks: ", dimension_breaks)
+    for element_index in range(total_number_of_elements):
+        array_string += decimal_number(input_array_flattened[element_index])
+        for dimension_break in dimension_breaks:
+            if ((element_index + 1) % dimension_break) == 0:
+                array_string += "}"
+        if element_index + 1 != total_number_of_elements:
+            array_string += ", "
+            for dimension_break in dimension_breaks:
+                if ((element_index + 1) % dimension_break) == 0:
+                    array_string += "'{"
+    print("System Verilog array: \n", array_string)
+    return array_string
 
 
 class SystemVerilogSyntaxGenerator:
@@ -138,7 +175,7 @@ class SystemVerilogSyntaxGenerator:
                     if isinstance(port.port_type, SystemVerilogPortType.NoType):
                         self.single_line_linebreak(port.port_direction.direction + " " + port.port_name + ",")
                     else:
-                        self.single_line_linebreak(port.port_direction.direction + " " + port.port_type.type + port.port_name + ",")
+                        self.single_line_linebreak(port.port_direction.direction + " " + port.port_type.type + " " + port.port_name + ",")
                 else:
                     if isinstance(port.port_type, SystemVerilogPortType.NoType):
                         self.single_line_linebreak(port.port_direction.direction + " [" + str(port.port_msb) + ":" + str(port.port_lsb) + "] " + port.port_name + ",")
@@ -198,6 +235,7 @@ class SystemVerilogSyntaxGenerator:
             initialization_string += dimension.get_representation()
         initialization_string += " = "
         initialization_string += values
+        initialization_string += ";"
         self.single_line_linebreak(initialization_string)
         self.blank_line()
 

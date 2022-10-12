@@ -3,3 +3,4 @@
 __pycache__/
 GeneratedSystemVerilogFiles/*
 *.dat
+HighLevelSimulationOutput.txt

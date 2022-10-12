@@ -23,7 +23,6 @@ class SystemVerilogModule:
         pass
 
     def add_parameter(self, new_parameter: dict[str, str]) -> dict[str, str]:
-        #self.parameter_list.pop(list(new_parameter.keys()).pop())
         self.parameter_list.update(new_parameter)
         return new_parameter
 

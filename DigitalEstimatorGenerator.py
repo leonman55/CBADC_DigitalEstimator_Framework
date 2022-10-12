@@ -18,6 +18,16 @@ import DigitalEstimatorVerificationModules.DigitalEstimatorTestbench
 
 
 def main():
+    configuration_number_of_timesteps_in_clock_cycle: int = 10
+    configuration_n_number_of_analog_states: int = 8
+    configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
+    configuration_beta: float = 6250.0
+    configuration_rho: float = -1e-2
+    configuration_kappa: float = -1.0
+    configuration_eta2: float = 1e7
+    configuration_lookback_length: int = 128
+    configuration_lookahead_length: int = 32
+
     path: str = ""
     if platform.system() == "Linux":
         #path = "./GeneratedSystemVerilogFiles/"
@@ -34,11 +44,20 @@ def main():
 
     name = "DigitalEstimatorTestbench"
     digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(path, name)
+    digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = configuration_number_of_timesteps_in_clock_cycle
+    digital_estimator_testbench.configuration_rho = configuration_rho
+    digital_estimator_testbench.configuration_beta = configuration_beta
+    digital_estimator_testbench.configuration_eta2 = configuration_eta2
+    digital_estimator_testbench.configuration_kappa = configuration_kappa
+    digital_estimator_testbench.configuration_lookback_length = configuration_lookback_length
+    digital_estimator_testbench.configuration_lookahead_length = configuration_lookahead_length
+    digital_estimator_testbench.configuration_n_number_of_analog_states = configuration_n_number_of_analog_states
+    digital_estimator_testbench.configuration_m_number_of_digital_states = configuration_m_number_of_digital_states
     digital_estimator_testbench.generate()
 
     options: list[str] = list[str]()
     options.append("-top " + digital_estimator_testbench.name)
-    write_options_file(path, "xrun_options", options)
+    write_xrun_options_file(path, "xrun_options", options)
     #sim_xrun: subprocess.CompletedProcess = subprocess.run(sim_folder + "sim.sh", shell = True)
     sim_xrun = subprocess.Popen(["./sim.sh"], cwd = sim_folder, stdout = PIPE, text = True, shell = True)
     sim_xrun.wait()
@@ -56,14 +75,14 @@ def main():
             print(line)
     
     print("\n\nStatistics:")
-    if pass_count == digital_estimator_testbench.syntax_generator.assertion_count:
-        print(f"All {digital_estimator_testbench.syntax_generator.assertion_count} assertions met!")
+    if fail_count == 0:
+        print("All checked assertions met!")
     else:
-        print(f"{pass_count} out of {digital_estimator_testbench.syntax_generator.assertion_count} assertions were met.")
+        print(f"{pass_count} out of {pass_count + fail_count} visited assertions were met.")
         print(f"{fail_count} assertions failed!")
 
 
-def write_options_file(path: str, name: str, options: list[str]):
+def write_xrun_options_file(path: str, name: str, options: list[str]):
     options_file: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
     options_file.set_path(path)
     options_file.set_name(name)
