@@ -1,11 +1,51 @@
 from array import array
 from curses import KEY_A1
+from math import ceil
 from operator import index
 from tokenize import Double
 from turtle import shape
+from typing import Generator, Iterator, Union
 import matplotlib.pyplot as plt
 import cbadc
 import numpy as np
+
+
+import SystemVerilogModule
+import SystemVerilogSyntaxGenerator
+
+
+def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lut_input_width: int) -> np.ndarray:
+    total_number_of_elements: int = 1
+    for dimension_index in range(len(coefficient_matrix.shape)):
+        total_number_of_elements *= coefficient_matrix.shape[dimension_index]
+    print("Total number of elements: ", total_number_of_elements)
+    coefficient_matrix_flattened = coefficient_matrix.reshape(total_number_of_elements)
+    lut_entry_array: list[int] = list[int]()
+    for coefficient_index in range(ceil(total_number_of_elements / lut_input_width) - 1):
+        for lut_entry_index in range(2**lut_input_width):
+            entry: int = 0
+            for shift_offset in range(lut_input_width):
+                if lut_entry_index & (0b1 << shift_offset):
+                    entry += coefficient_matrix_flattened[coefficient_index * lut_input_width + shift_offset]
+                else:
+                    entry -= coefficient_matrix_flattened[coefficient_index * lut_input_width + shift_offset]
+            lut_entry_array.append(entry)
+    last_lut_width: int = total_number_of_elements % lut_input_width
+    if last_lut_width == 0:
+        last_lut_width = 4
+    coefficient_index: int = ceil(total_number_of_elements / lut_input_width) - 1
+    for lut_entry_index in range(2**last_lut_width):
+        entry: int = 0
+        for shift_offset in range(last_lut_width):
+            if lut_entry_index & (0b1 << shift_offset):
+                entry += coefficient_matrix_flattened[coefficient_index * lut_input_width + shift_offset]
+            else:
+                entry -= coefficient_matrix_flattened[coefficient_index * lut_input_width + shift_offset]
+        lut_entry_array.append(entry)
+    print("LUT entry count:\n", len(lut_entry_array))
+    print("LUT entry list:\n", lut_entry_array)
+    return lut_entry_array
+
 
 class DigitalEstimatorParameterGenerator():
     # Set the number of analog states
@@ -23,6 +63,21 @@ class DigitalEstimatorParameterGenerator():
     k1 = 5
     # Set the batch size of lookahead
     k2 = 1
+    # Digital estimator data width
+    data_width: int = 64
+
+    # Values for input stimulus generation
+    # amplitude of the signal
+    amplitude = 0.5
+    # Choose the sinusoidal frequency via an oversampling ratio (OSR).
+    OSR = 1 << 9
+    # We also specify a phase an offset these are hovewer optional.
+    phase = np.pi / 3
+    offset = 0.0
+    # Length of the simulation
+    size: int = 1 << 12
+
+    # FIR filter coefficients
     fir_h_matrix: np.ndarray
     fir_hb_matrix: np.ndarray
     fir_hf_matrix: np.ndarray
@@ -35,7 +90,13 @@ class DigitalEstimatorParameterGenerator():
             kappa: float = -1.0,
             eta2: float = 1e7,
             k1: int = 5,
-            k2: int = 1) -> None:
+            k2: int = 1,
+            data_width: int = 64,
+            amplitude: float = 0.5,
+            OSR: int = 1 << 9,
+            phase: float = np.pi / 3.0,
+            offset: float = 0.0,
+            size: int = 1 << 12) -> None:
         self.n_number_of_analog_states = n_number_of_analog_states
         self.m_number_of_digital_states = m_number_of_digital_states
         self.beta = beta
@@ -44,6 +105,21 @@ class DigitalEstimatorParameterGenerator():
         self.eta2 = eta2
         self.k1 = k1
         self.k2 = k2
+        self.data_width = data_width
+        self.amplitude = amplitude
+        self.OSR = OSR
+        self.phase = phase
+        self.offset = offset
+        self.size = size
+
+    def write_control_signal_to_csv_file(self, values: np.ndarray):
+        with open("../df/sim/SystemVerilogFiles/control_signal.csv", "w") as csv_file:
+            for single_control_signal in values:
+                single_control_signal_string: str = ""
+                for bit_index in range(self.m_number_of_digital_states - 1, -1, -1):
+                    single_control_signal_string = single_control_signal_string + str(int(single_control_signal[bit_index]))
+                csv_file.write(single_control_signal_string + ",\n")
+
 
     def simulate_analog_system(self):
         # Setup the analog System.
@@ -56,7 +132,7 @@ class DigitalEstimatorParameterGenerator():
         #kappa = -1.0
         # In this example, each nodes amplification and local feedback will be set
         # identically.
-        betaVec = self.beta * np.ones(self.n_number_of_ananlog_states)
+        betaVec = self.beta * np.ones(self.n_number_of_analog_states)
         rhoVec = betaVec * self.rho
         kappaVec = self.kappa * self.beta * np.eye(self.n_number_of_analog_states)
 
@@ -79,27 +155,28 @@ class DigitalEstimatorParameterGenerator():
         print(digital_control)
 
 
-        # Setup the ananlog stimulation signal
+        # Setup the analog stimulation signal
         # Set the peak amplitude.
-        amplitude = 0.5
+        #amplitude = 0.5
         # Choose the sinusoidal frequency via an oversampling ratio (OSR).
-        OSR = 1 << 9
-        frequency = 1.0 / (T * OSR)
+        #OSR = 1 << 9
+        frequency = 1.0 / (T * self.OSR)
 
         # We also specify a phase an offset these are hovewer optional.
-        phase = np.pi / 3
-        offset = 0.0
+        #phase = np.pi / 3
+        #offset = 0.0
 
         # Instantiate the analog signal
-        analog_signal = cbadc.analog_signal.Sinusoidal(amplitude, frequency, phase, offset)
+        analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
         # print to ensure correct parametrization.
         print(analog_signal)
 
 
         # Setup the simulation of the system
         # Simulate for 2^18 control cycles.
-        size = 1 << 18
-        end_time = T * size
+        #size = 1 << 18
+        #size = 1 << 12
+        end_time = T * self.size
 
         # Instantiate the simulator.
         simulator = cbadc.simulator.get_simulator(
@@ -113,12 +190,12 @@ class DigitalEstimatorParameterGenerator():
         # compute as it involves precomputing solutions to initial value problems.
 
         # Let's print the first 20 control decisions.
-        index = 0
+        """index = 0
         for s in cbadc.utilities.show_status(simulator):
             if index > 19:
                 break
             print(f"step:{index} -> s:{np.array(s)}")
-            index += 1
+            index += 1"""
 
         # To verify the simulation parametrization we can
         print(simulator)
@@ -128,11 +205,11 @@ class DigitalEstimatorParameterGenerator():
         # Repeating the steps above we now get for the following
         # ten control cycles.
         ext_simulator = cbadc.simulator.extended_simulation_result(simulator)
-        for res in cbadc.utilities.show_status(ext_simulator):
+        """for res in cbadc.utilities.show_status(ext_simulator):
             if index > 29:
                 break
             print(f"step:{index} -> s:{res['control_signal']}, x:{res['analog_state']}")
-            index += 1
+            index += 1"""
 
         
         # Safe control signal to file
@@ -146,11 +223,11 @@ class DigitalEstimatorParameterGenerator():
         )
 
         # Construct byte stream.
-        byte_stream = cbadc.utilities.control_signal_2_byte_stream(simulator, self.m_number_of_digital_states)
+        #byte_stream = cbadc.utilities.control_signal_2_byte_stream(simulator, self.m_number_of_digital_states)
 
-        cbadc.utilities.write_byte_stream_to_file(
-            "sinusoidal_simulation.dat", self.print_next_10_bytes(byte_stream, size, index)
-        )
+        #cbadc.utilities.write_byte_stream_to_file(
+        #    "sinusoidal_simulation.dat", self.print_next_10_bytes(byte_stream, size, index)
+        #)
 
 
         """# Analog state evaluation
@@ -210,6 +287,8 @@ class DigitalEstimatorParameterGenerator():
         ax[-1, 0].set_xlabel("$t / T$")
         ax[-1, 1].set_xlabel("$t / T$")
         fig.tight_layout()"""
+
+        return simulator
 
 
     def print_next_10_bytes(self, stream, size, index):
@@ -451,7 +530,7 @@ class DigitalEstimatorParameterGenerator():
 
         #print("Batch estimator:\n\n", digital_estimator_batch, "\n")
 
-        digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(64, 1.0))
+        digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 1.0))
         print("FIR estimator\n\n", digital_estimator_fir, "\n")
         self.fir_h_matrix = digital_estimator_fir.h
         self.fir_hb_matrix = digital_estimator_fir.h[0 : self.n_number_of_analog_states - 1, 0 : self.k1]
@@ -514,8 +593,22 @@ class DigitalEstimatorParameterGenerator():
 
 
 if __name__ == '__main__':
-    high_level_simulation: DigitalEstimatorParameterGenerator = DigitalEstimatorParameterGenerator(k2 = 3)
-    #high_level_simulation.simulate_analog_system()
+    high_level_simulation: DigitalEstimatorParameterGenerator = DigitalEstimatorParameterGenerator(k1 = 32, k2 = 32)
+    simulation: cbadc.simulator.PreComputedControlSignalsSimulator = high_level_simulation.simulate_analog_system()
+    #simulation: Iterator[np.ndarray] = high_level_simulation.simulate_analog_system()
+    """step_index: int = 0
+    max_steps: int = 100
+    for step in simulation:
+        print(f"Digital control signal: {step}")
+    for step in simulation:
+        print(f"Repeat digital control signal: {step}")"""
+    high_level_simulation.write_control_signal_to_csv_file(simulation)
+
     #high_level_simulation.simulate_digital_estimator_batch()
-    high_level_simulation.simulate_digital_estimator_fir()
-    
+    """high_level_simulation.simulate_digital_estimator_fir()
+    lut_entry_list: list[int] = convert_coefficient_matrix_to_lut_entries(high_level_simulation.fir_hb_matrix, lut_input_width = 4)
+    lut_entry_array: np.ndarray = np.array(lut_entry_list)
+    SystemVerilogSyntaxGenerator.ndarray_to_system_verilog_array(lut_entry_array)
+    lut_entry_list = convert_coefficient_matrix_to_lut_entries(high_level_simulation.fir_hf_matrix, lut_input_width = 4)
+    lut_entry_array = np.array(lut_entry_list)
+    SystemVerilogSyntaxGenerator.ndarray_to_system_verilog_array(lut_entry_array)"""

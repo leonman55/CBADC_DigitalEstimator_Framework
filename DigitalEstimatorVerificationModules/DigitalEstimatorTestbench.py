@@ -1,16 +1,20 @@
 import random
 
+import numpy
+
 import SystemVerilogModule
 import DigitalEstimatorModules.DigitalEstimatorWrapper
 import SystemVerilogPort
 import SystemVerilogSignal
 import SystemVerilogPortType
 from SystemVerilogSignalSign import SystemVerilogSignalSign
-from SystemVerilogSyntaxGenerator import get_parameter_value, set_parameter_value
+from SystemVerilogSyntaxGenerator import SystemVerilogSyntaxGenerator, get_parameter_value, set_parameter_value
 from SystemVerilogSyntaxGenerator import set_parameter_value_by_parameter
 from SystemVerilogSyntaxGenerator import connect_port_array
 from SystemVerilogSyntaxGenerator import decimal_number
+from SystemVerilogSyntaxGenerator import ndarray_to_system_verilog_array
 from SystemVerilogComparisonOperator import *
+import CBADC_HighLevelSimulation
 
 
 class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
@@ -23,6 +27,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_eta2: float = 1e7
     configuration_lookback_length: int = 5
     configuration_lookahead_length: int = 1
+    configuration_fir_data_width: int = 64
+    configuration_fir_lut_input_width: int = 4
+    configuration_simulation_length: int = 2 << 12
 
     parameter_alu_input_width: dict[str, str] = {"ALU_INPUT_WIDTH": "32"}
     parameter_control_signal_input_width: dict[str, str] = {"CONTROL_SIGNAL_INPUT_WIDTH": str(configuration_m_number_of_digital_states)}
@@ -30,7 +37,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     def __init__(self, path: str, name: str):
         super().__init__(path, name)
 
-    def generate(self):
+    """def generate(self):
         self.parameter_alu_input_width = self.add_parameter(self.parameter_alu_input_width)
         set_parameter_value(self.parameter_control_signal_input_width, str(self.configuration_m_number_of_digital_states))
         self.parameter_control_signal_input_width = self.add_parameter(self.parameter_control_signal_input_width)
@@ -105,4 +112,177 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
         self.syntax_generator.blank_line()
         self.syntax_generator.end_module()
+        self.syntax_generator.close()"""
+
+    def generate(self):
+        high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator(
+            self.configuration_n_number_of_analog_states,
+            self.configuration_m_number_of_digital_states,
+            self.configuration_beta,
+            self.configuration_rho,
+            self.configuration_kappa,
+            self.configuration_eta2,
+            self.configuration_lookback_length,
+            self.configuration_lookahead_length,
+            self.configuration_fir_data_width,
+            size = self.configuration_simulation_length
+        )
+        high_level_simulation.simulate_digital_estimator_fir()
+
+        content: str = f"""module DigitalEstimatorTestbench #(
+            parameter CLOCK_PERIOD = 10,
+            parameter CLOCK_HALF_PERIOD = $ceil(CLOCK_PERIOD / 2.0),
+
+            parameter N_NUMBER_ANALOG_STATES = {self.configuration_n_number_of_analog_states},
+            parameter M_NUMBER_DIGITAL_STATES = {self.configuration_m_number_of_digital_states},
+            parameter LOOKAHEAD_SIZE = {self.configuration_lookahead_length},
+            parameter LOOKBACK_SIZE = {self.configuration_lookback_length},
+            parameter TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
+            parameter OUTPUT_DATA_WIDTH = {self.configuration_fir_data_width},
+
+            parameter INPUT_WIDTH = 4
+        );"""
+        content += """
+
+            localparam LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH);
+            localparam LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH);
+
+            logic rst;
+            logic clk;
+            logic [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input;
+            //logic [(LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookback_lookup_table_entries;
+            logic [LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
+            //logic [(LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookahead_lookup_table_entries;
+            logic [LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
+            wire signed [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output;
+            wire signal_estimation_valid_out;
+
+            logic [4 - 1 : 0] look_up_table_input;
+            logic [2**4 - 1 : 0][16 - 1 : 0] memory;
+            wire [16 - 1 : 0] look_up_table_output;
+
+            always begin
+                clk = 1'b0;
+                #CLOCK_HALF_PERIOD;
+                clk = 1'b1;
+                #CLOCK_HALF_PERIOD;
+            end
+
+            initial begin
+                for(logic [4 : 0] index = 0; index < 2**4; index++) begin
+                    memory[index] = index;
+                end
+            end
+
+            /*always_ff @(posedge clk) begin
+                if(rst == 1) begin
+                    digital_control_input <= 1'b0;
+                end
+                else begin
+                    digital_control_input <= digital_control_input + 1'b1;
+                end
+            end*/
+
+            initial begin
+                static int control_signal_file = $fopen("./control_signal.csv", "r");
+                if(control_signal_file == 0) begin
+                    $error("Control signal input file could not be opened!");
+                    $finish;
+                end
+
+                @(negedge rst);
+                @(posedge clk);
+
+                while($fscanf(control_signal_file, "%b,\\n", digital_control_input) > 0) begin
+                    @(posedge clk);
+                end
+
+                $fclose(control_signal_file);
+
+                $finish(0);
+            end
+
+            initial begin
+                static int digital_estimation_output_file = $fopen("./digital_estimation.csv", "w");
+                if(digital_estimation_output_file == 0) begin
+                    $error("Digital estimation output file could not be opened!");
+                    $finish;
+                end
+
+                @(negedge rst);
+                @(posedge clk);
+
+                forever begin
+                    $fwrite(digital_estimation_output_file, "%d,\\n", signal_estimation_output);
+                    @(posedge clk);
+                end
+            end
+
+            /*initial begin
+                for(int lookback_entry_index = 0; lookback_entry_index < LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT; lookback_entry_index++) begin
+                    lookback_lookup_table_entries[lookback_entry_index * OUTPUT_DATA_WIDTH +: OUTPUT_DATA_WIDTH] = -1;
+                end
+                for(int lookahead_entry_index = 0; lookahead_entry_index < LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT; lookahead_entry_index++) begin
+                    lookahead_lookup_table_entries[lookahead_entry_index * OUTPUT_DATA_WIDTH +: OUTPUT_DATA_WIDTH] = 1;
+                end
+            end*/
+
+            initial begin
+                lookback_lookup_table_entries = """
+        content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n"
+        content += """lookahead_lookup_table_entries = """
+        content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n"
+        content += """
+            end
+
+            initial begin
+                rst = 1'b1;
+                #(2 * CLOCK_PERIOD);
+                rst = 1'b0;
+                #CLOCK_HALF_PERIOD;
+
+                for(logic [INPUT_WIDTH : 0] index = 0; index < 2**INPUT_WIDTH; index++) begin
+                    look_up_table_input = index;
+                    #CLOCK_PERIOD;
+                    assert(look_up_table_output === index)
+                        $display("PASS: LUT output equals index.");
+                    else
+                        $display("FAIL: LUT: %d\\tindex:%d", look_up_table_output, index);
+                end
+            end
+
+
+            DigitalEstimator #(
+                    .N_NUMBER_ANALOG_STATES(N_NUMBER_ANALOG_STATES),
+                    .M_NUMBER_DIGITAL_STATES(M_NUMBER_DIGITAL_STATES),
+                    .LOOKBACK_SIZE(LOOKBACK_SIZE),
+                    .LOOKAHEAD_SIZE(LOOKAHEAD_SIZE),
+                    .LOOKUP_TABLE_INPUT_WIDTH(INPUT_WIDTH),
+                    .LOOKUP_TABLE_DATA_WIDTH(OUTPUT_DATA_WIDTH),
+                    .OUTPUT_DATA_WIDTH(OUTPUT_DATA_WIDTH)
+                )
+                dut_digital_estimator (
+                    .rst(rst),
+                    .clk(clk),
+                    .digital_control_input(digital_control_input),
+                    .lookback_lookup_table_entries(lookback_lookup_table_entries),
+                    .lookahead_lookup_table_entries(lookahead_lookup_table_entries),
+                    .signal_estimation_valid_out(signal_estimation_valid_out),
+                    .signal_estimation_output(signal_estimation_output)
+            );
+
+            LookUpTable #(
+                    .INPUT_WIDTH(4),
+                    .DATA_WIDTH(16)
+                )
+                dut_look_up_table (
+                    .in(look_up_table_input),
+                    .memory(memory),
+                    .out(look_up_table_output)
+            );
+
+
+        endmodule"""
+
+        self.syntax_generator.single_line_no_linebreak(content, indentation = 0)
         self.syntax_generator.close()

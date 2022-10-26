@@ -6,6 +6,7 @@ import SystemVerilogPortType
 import SystemVerilogDimension
 import DigitalEstimatorModules.TestModule
 import DigitalEstimatorModules.SimpleAdder
+import DigitalEstimatorModules.LookUpTable
 import SystemVerilogSignalSign
 from SystemVerilogSyntaxGenerator import decimal_number, get_parameter_value, connect_port_array, ndarray_to_system_verilog_array, set_parameter_value
 import CBADC_HighLevelSimulation
@@ -36,7 +37,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     def __init__(self, path: str, name: str):
         super().__init__(path, name)
 
-    def generate(self):
+    """def generate(self):
         self.parameter_alu_input_width = self.add_parameter(self.parameter_alu_input_width)
         set_parameter_value(self.parameter_control_signal_input_width, str(self.configuration_m_number_of_digital_states))
         self.parameter_control_signal_input_width = self.add_parameter(self.parameter_control_signal_input_width)
@@ -93,7 +94,112 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         fir_lookahead_coefficient_matrix_dimensions.append(fir_lookahead_coefficient_matrix_columns)
         fir_lookahead_coefficient_matrix = self.syntax_generator.local_parameter("fir_lookahead_coefficient_matrix", SystemVerilogPortType.Logic(), SystemVerilogSignalSign.Signed(), 63, 0, fir_lookahead_coefficient_matrix_dimensions, ndarray_to_system_verilog_array(high_level_simulation.get_fir_lookahead_coefficient_matrix()))
 
+        look_up_table: DigitalEstimatorModules.LookUpTable = DigitalEstimatorModules.LookUpTable.LookUpTable(self.path, "LookUpTable")
+        look_up_table.generate()
+
         self.syntax_generator.instantiate_submodules(self.submodules)
         self.syntax_generator.end_module()
-        self.syntax_generator.close()
+        self.syntax_generator.close()"""
+
+    content: str = """module DigitalEstimator #(
+        parameter N_NUMBER_ANALOG_STATES = 6,
+        parameter M_NUMBER_DIGITAL_STATES = 6,
+        parameter LOOKBACK_SIZE = 37,
+        parameter LOOKAHEAD_SIZE = 17,
+        localparam TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
+        parameter LOOKUP_TABLE_INPUT_WIDTH = 4,
+        parameter LOOKUP_TABLE_DATA_WIDTH = 1,
+        localparam LOOKBACK_LOOKUP_TABLE_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / LOOKUP_TABLE_INPUT_WIDTH)),
+        localparam LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT = LOOKBACK_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
+        localparam LOOKAHEAD_LOOKUP_TABLE_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / LOOKUP_TABLE_INPUT_WIDTH)),
+        localparam LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT = LOOKAHEAD_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
+        parameter OUTPUT_DATA_WIDTH = 16
+    ) (
+        input wire rst,
+        input wire clk,
+        input wire [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input,
+        input wire [LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries,
+        input wire [LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries,
+        output logic signal_estimation_valid_out,
+        output logic [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output
+);
+
+    logic [TOTAL_LOOKUP_REGISTER_LENGTH - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] sample_shift_register;
+
+    always_ff @(posedge clk) begin
+        if(rst == 1'b1) begin
+            sample_shift_register <= {(M_NUMBER_DIGITAL_STATES * TOTAL_LOOKUP_REGISTER_LENGTH) - 1{1'b0}};
+        end
+        else begin
+            sample_shift_register <= {sample_shift_register[TOTAL_LOOKUP_REGISTER_LENGTH - 2 : 0], digital_control_input};
+        end
+    end
+
+    logic [LOOKBACK_SIZE - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] lookback_register;
+
+    assign lookback_register = sample_shift_register[TOTAL_LOOKUP_REGISTER_LENGTH - 1 : LOOKAHEAD_SIZE];
+
+    logic [LOOKAHEAD_SIZE - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] lookahead_register;
+
+    generate
+        for(genvar lookahead_index = 0; lookahead_index < LOOKAHEAD_SIZE; lookahead_index++) begin
+            assign lookahead_register[lookahead_index] = sample_shift_register[LOOKAHEAD_SIZE - 1 - lookahead_index];
+        end
+    endgenerate
+
+    logic [LOOKBACK_LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_results;
+    logic [LOOKAHEAD_LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_results;
+
+    wire [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] adder_block_lookback_result;
+    wire [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] adder_block_lookahead_result;
+
+    assign signal_estimation_output = adder_block_lookback_result + adder_block_lookahead_result;
+
+    LookUpTableBlock #(
+            .TOTAL_INPUT_WIDTH(LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES),
+            .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
+            .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        lookback_lookup_table_block (
+            .input_register(lookback_register),
+            .lookup_table_entries(lookback_lookup_table_entries),
+            .lookup_table_results(lookback_lookup_table_results)
+    );
+
+    AdderBlockCombinatorial #(
+            .INPUT_COUNT(LOOKBACK_LOOKUP_TABLE_COUNT),
+            .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        adder_block_lookback (
+            .rst(rst),
+            .in(lookback_lookup_table_results),
+            .out(adder_block_lookback_result)
+    );
+
+    LookUpTableBlock #(
+            .TOTAL_INPUT_WIDTH(LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES),
+            .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
+            .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        lookahead_lookup_table_block (
+            .input_register(lookahead_register),
+            .lookup_table_entries(lookahead_lookup_table_entries),
+            .lookup_table_results(lookahead_lookup_table_results)
+    );
+
+    AdderBlockCombinatorial #(
+            .INPUT_COUNT(LOOKAHEAD_LOOKUP_TABLE_COUNT),
+            .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        adder_block_lookahead (
+            .rst(rst),
+            .in(lookahead_lookup_table_results),
+            .out(adder_block_lookahead_result)
+    );
+
+
+endmodule"""
         
+    def generate(self):
+        self.syntax_generator.single_line_no_linebreak(self.content, indentation = 0)
+        self.syntax_generator.close()
