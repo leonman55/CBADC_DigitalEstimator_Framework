@@ -25,17 +25,17 @@ import CBADC_HighLevelSimulation
 
 def main():
     configuration_number_of_timesteps_in_clock_cycle: int = 10
-    configuration_n_number_of_analog_states: int = 5
+    configuration_n_number_of_analog_states: int = 4
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
     configuration_beta: float = 6250.0
     configuration_rho: float = -1e-2
     configuration_kappa: float = -1.0
     configuration_eta2: float = 1e7
-    configuration_lookback_length: int = 32
-    configuration_lookahead_length: int = 32
-    configuration_fir_data_width: int = 16
+    configuration_lookback_length: int = 137
+    configuration_lookahead_length: int = 283
+    configuration_fir_data_width: int = 31
     configuration_fir_lut_input_width: int = 4
-    configuration_sumulation_length: int = 2 << 14
+    configuration_sumulation_length: int = 2 << 10
 
     path: str = ""
     if platform.system() == "Linux":
@@ -86,14 +86,20 @@ def main():
         size = configuration_sumulation_length
     )
     high_level_simulation.write_control_signal_to_csv_file(high_level_simulation.simulate_analog_system())
+    high_level_simulation.simulate_digital_estimator_fir()
+    high_level_simulation.simulate_fir_filter(number_format_float = True)
+    #high_level_simulation.simulate_fir_filter(number_format_float = False)
 
     options: list[str] = list[str]()
     options.append("-top " + digital_estimator_testbench.name)
     write_xrun_options_file(path, "xrun_options", options)
     #sim_xrun: subprocess.CompletedProcess = subprocess.run(sim_folder + "sim.sh", shell = True)
     sim_xrun = subprocess.Popen(["./sim.sh"], cwd = sim_folder, stdout = PIPE, text = True, shell = True)
+
+    high_level_simulation.write_digital_estimation_fir_to_csv_file(high_level_simulation.simulate_digital_estimator_fir())
+
     sim_xrun.wait()
-    """pass_count: int = 0
+    pass_count: int = 0
     fail_count: int = 0
     while True:
         line: str = sim_xrun.stdout.readline().removesuffix("\n")
@@ -111,7 +117,9 @@ def main():
         print("All checked assertions met!")
     else:
         print(f"{pass_count} out of {pass_count + fail_count} visited assertions were met.")
-        print(f"{fail_count} assertions failed!")"""
+        print(f"{fail_count} assertions failed!")
+
+    high_level_simulation.compare_simulation_system_verilog_to_high_level()
 
 
 def write_xrun_options_file(path: str, name: str, options: list[str]):

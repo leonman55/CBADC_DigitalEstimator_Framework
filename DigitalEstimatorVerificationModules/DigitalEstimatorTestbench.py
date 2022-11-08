@@ -144,8 +144,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         );"""
         content += """
 
-            localparam LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH);
-            localparam LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH);
+            localparam LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH) + (((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)));
+            localparam LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH) + (((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)));
 
             logic rst;
             logic clk;
@@ -211,9 +211,11 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
                 @(negedge rst);
                 @(posedge clk);
+                @(posedge clk);
 
                 forever begin
-                    $fwrite(digital_estimation_output_file, "%d,\\n", signal_estimation_output);
+                    //$fwrite(digital_estimation_output_file, "%d, %d, %d\\n", signal_estimation_output, dut_digital_estimator.adder_block_lookback_result, dut_digital_estimator.adder_block_lookahead_result);
+                    $fwrite(digital_estimation_output_file, "%f, %f, %f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookback_result) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookahead_result) / (2**(OUTPUT_DATA_WIDTH - 1)));
                     @(posedge clk);
                 end
             end

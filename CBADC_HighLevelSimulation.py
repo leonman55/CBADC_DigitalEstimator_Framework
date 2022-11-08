@@ -8,6 +8,7 @@ from typing import Generator, Iterator, Union
 import matplotlib.pyplot as plt
 import cbadc
 import numpy as np
+from sqlalchemy import true
 
 
 import SystemVerilogModule
@@ -29,7 +30,8 @@ def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lu
                     entry += coefficient_matrix_flattened[coefficient_index * lut_input_width + shift_offset]
                 else:
                     entry -= coefficient_matrix_flattened[coefficient_index * lut_input_width + shift_offset]
-            lut_entry_array.append(entry)
+            #lut_entry_array.append(entry)
+            lut_entry_array.insert(0, entry)
     last_lut_width: int = total_number_of_elements % lut_input_width
     if last_lut_width == 0:
         last_lut_width = 4
@@ -41,10 +43,19 @@ def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lu
                 entry += coefficient_matrix_flattened[coefficient_index * lut_input_width + shift_offset]
             else:
                 entry -= coefficient_matrix_flattened[coefficient_index * lut_input_width + shift_offset]
-        lut_entry_array.append(entry)
-    print("LUT entry count:\n", len(lut_entry_array))
+        #lut_entry_array.append(entry)
+        lut_entry_array.insert(0, entry)
+    print("LUT entry count:", len(lut_entry_array))
     print("LUT entry list:\n", lut_entry_array)
     return lut_entry_array
+
+
+def plot_results():
+    with open("../df/sim/SystemVerilogFiles/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
+        with open("../df/sim/SystemVerilogFiles/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
+            pass
+        system_verilog_simulation_csv_file.close()
+        high_level_simulation_csv_file.close()
 
 
 class DigitalEstimatorParameterGenerator():
@@ -119,6 +130,17 @@ class DigitalEstimatorParameterGenerator():
                 for bit_index in range(self.m_number_of_digital_states - 1, -1, -1):
                     single_control_signal_string = single_control_signal_string + str(int(single_control_signal[bit_index]))
                 csv_file.write(single_control_signal_string + ",\n")
+            csv_file.close()
+
+    def write_digital_estimation_fir_to_csv_file(self, values: np.ndarray):
+        with open("../df/sim/SystemVerilogFiles/digital_estimation_high_level.csv", "w") as csv_file:
+            for single_estimation_value in values:
+                single_estimation_value_string: str = str(single_estimation_value)
+                single_estimation_value_string = single_estimation_value_string.lstrip("[")
+                single_estimation_value_string = single_estimation_value_string.lstrip(" ")
+                single_estimation_value_string = single_estimation_value_string.rstrip("],")
+                csv_file.write(single_estimation_value_string + ",\n")
+            csv_file.close()
 
 
     def simulate_analog_system(self):
@@ -189,6 +211,9 @@ class DigitalEstimatorParameterGenerator():
         # Depending on your analog system the step above might take some time to
         # compute as it involves precomputing solutions to initial value problems.
 
+        # To verify the simulation parametrization we can
+        print(simulator)
+
         # Let's print the first 20 control decisions.
         """index = 0
         for s in cbadc.utilities.show_status(simulator):
@@ -198,13 +223,13 @@ class DigitalEstimatorParameterGenerator():
             index += 1"""
 
         # To verify the simulation parametrization we can
-        print(simulator)
+        #print(simulator)
 
 
         # Setup extended simulator
         # Repeating the steps above we now get for the following
         # ten control cycles.
-        ext_simulator = cbadc.simulator.extended_simulation_result(simulator)
+        #ext_simulator = cbadc.simulator.extended_simulation_result(simulator)
         """for res in cbadc.utilities.show_status(ext_simulator):
             if index > 29:
                 break
@@ -214,13 +239,13 @@ class DigitalEstimatorParameterGenerator():
         
         # Safe control signal to file
         # Instantiate a new simulator and control.
-        simulator = cbadc.simulator.get_simulator(
+        """simulator = cbadc.simulator.get_simulator(
             analog_system,
             digital_control,
             [analog_signal],
             clock = clock,
             t_stop=end_time
-        )
+        )"""
 
         # Construct byte stream.
         #byte_stream = cbadc.utilities.control_signal_2_byte_stream(simulator, self.m_number_of_digital_states)
@@ -299,7 +324,7 @@ class DigitalEstimatorParameterGenerator():
             yield byte
         
 
-    def simulate_digital_estimator_batch() -> cbadc.digital_estimator.BatchEstimator:
+    def simulate_digital_estimator_batch(self) -> cbadc.digital_estimator.BatchEstimator:
         # Setup analog system and digital control
         N = 6
         M = N
@@ -342,38 +367,35 @@ class DigitalEstimatorParameterGenerator():
         # function. Subsequently, a random (random 1-0 valued M tuples) control signal
         # of length
         #sequence_length = 10
-        sequence_length = 11
+        #sequence_length = 11
 
         # can conveniently be created as
 
         control_signal_sequences = cbadc.utilities.random_control_signal(
-            M, stop_after_number_of_iterations=sequence_length, random_seed=42
+            self.m_number_of_digital_states, stop_after_number_of_iterations=self.size, random_seed=42
         )
         # where random_seed and stop_after_number_of_iterations are fully optional
 
 
         # Setup the digital estimator
         # Set the bandwidth of the estimator
-        eta2 = 1e7
+        #eta2 = 1e7
 
         # Set the batch size
         #K1 = sequence_length
-        K1 = 5
+        #K1 = 5
 
         # Set lookahead
-        K2 = 1
+        #K2 = 1
 
         # Instantiate the digital estimator (this is where the filter coefficients are
         # computed).
         digital_estimator_batch = cbadc.digital_estimator.BatchEstimator(
-            analog_system, digital_control, eta2, K1, K2
+            analog_system, digital_control, self.eta2, self.k1, self.k2
         )
 
         print("Batch estimator:\n\n", digital_estimator_batch, "\n")
 
-        #digital_estimator_fir = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, eta2, K1, K2)
-
-        #print("FIR estimator\n\n", digital_estimator_fir, "\n")
 
         """# Set control signal iterator
         digital_estimator(control_signal_sequences)
@@ -524,19 +546,36 @@ class DigitalEstimatorParameterGenerator():
 
         # Instantiate the digital estimator (this is where the filter coefficients are
         # computed).
-        #digital_estimator_batch = cbadc.digital_estimator.BatchEstimator(
-        #    analog_system, digital_control, eta2, K1, K2
-        #)
-
-        #print("Batch estimator:\n\n", digital_estimator_batch, "\n")
-
         digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 1.0))
+        #digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 4.0))
         print("FIR estimator\n\n", digital_estimator_fir, "\n")
         self.fir_h_matrix = digital_estimator_fir.h
         self.fir_hb_matrix = digital_estimator_fir.h[0 : self.n_number_of_analog_states - 1, 0 : self.k1]
         self.fir_hf_matrix = digital_estimator_fir.h[0 : self.n_number_of_analog_states - 1, self.k1 : self.k1 + self.k2]
         print("FIR hb matrix:\n", self.fir_hb_matrix)
         print("FIR hf matrix:\n", self.fir_hf_matrix)
+
+        # Set the frequency of the analog simulation signal
+        frequency = 1.0 / (T * self.OSR)
+
+        # Instantiate the analog signal
+        analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
+        # print to ensure correct parametrization.
+        print(analog_signal)
+
+        # Setup the simulation time of the system
+        end_time = T * self.size
+
+        # Instantiate the simulator.
+        simulator = cbadc.simulator.get_simulator(
+            analog_system,
+            digital_control,
+            [analog_signal],
+            clock = clock,
+            t_stop = end_time,
+        )
+
+        digital_estimator_fir(simulator)
 
 
         """# Set control signal iterator
@@ -592,16 +631,81 @@ class DigitalEstimatorParameterGenerator():
         return self.fir_hf_matrix
 
 
+    def simulate_fir_filter(self, number_format_float: bool = False):
+        lookback: list[int] = list[int]()
+        for lookback_index in range(self.k1):
+            lookback.append(0)
+        lookahead: list[int] = list[int]()
+        for lookahead_index in range(self.k2):
+            lookahead.append(0)
+        with open("../df/sim/SystemVerilogFiles/control_signal.csv", "r") as input_csv_file:
+            with open("../df/sim/SystemVerilogFiles/digital_estimation_high_level_self_programmed.csv", "w") as output_csv_file:
+                lines: list[str] = input_csv_file.readlines()
+                startup_count: int = 0
+                startup_counter: int = 0
+                for line in lines:
+                    line = line.rstrip(",\n")
+                    line_int: int = int(line, base = 2)                    
+                    lookback.insert(0, line_int)
+                    lookahead.insert(0, lookback.pop(self.k1))
+                    lookahead.pop(self.k2)
+
+                    lookback_result: int = 0
+                    for lookback_index in range(self.k1):
+                        for value_index in range(self.m_number_of_digital_states):
+                            if (lookback[lookback_index] >> value_index) & 1:
+                                lookback_result += self.fir_hb_matrix[0][lookback_index][value_index]
+                            else:
+                                lookback_result -= self.fir_hb_matrix[0][lookback_index][value_index]
+                    lookahead_result: int = 0
+                    for lookahead_index in range(self.k2):
+                        for value_index in range(self.m_number_of_digital_states):
+                            if (lookahead[lookahead_index] >> value_index) & 1:
+                                lookahead_result += self.fir_hf_matrix[0][lookahead_index][value_index]
+                            else:
+                                lookahead_result -= self.fir_hf_matrix[0][lookahead_index][value_index]
+                    if startup_counter < startup_count:
+                        startup_counter += 1
+                        continue
+                    if number_format_float:
+                        lookback_result_float: float = float(lookback_result) / (2.0**(self.data_width - 1))
+                        lookahead_result_float: float = float(lookahead_result) / (2.0**(self.data_width - 1))
+                        output_csv_file. write(str(lookback_result_float + lookahead_result_float) + "," + str(lookback_result_float) + "," + str(lookahead_result_float) + ",\n")
+                    else:
+                        output_csv_file.write(str(lookback_result + lookahead_result) + ", " + str(lookback_result) + ", " + str(lookahead_result) + ",\n")
+                output_csv_file.close()
+            input_csv_file.close()
+
+
+    def compare_simulation_system_verilog_to_high_level(self, fixed_point: bool = False, fixed_point_mantissa_bits: int = 0, offset: int = 2):
+        with open("../df/sim/SystemVerilogFiles/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
+            with open("../df/sim/SystemVerilogFiles/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
+                with open("../df/sim/SystemVerilogFiles/digital_estimation_system_verilog_vs_high_level.csv", "w") as comparison_csv_file:
+                    offset_counter: int = 0
+                    while True:
+                        while offset_counter < offset:
+                            system_verilog_simulation_csv_file.readline()
+                            offset_counter += 1
+                        system_verilog_simulation_line: str = system_verilog_simulation_csv_file.readline().rsplit(",")[0]
+                        if system_verilog_simulation_line == "":
+                            break
+                        if fixed_point:
+                            system_verilog_simulation_float: float = float(system_verilog_simulation_line) / (2**(fixed_point_mantissa_bits - 1))
+                        else:
+                            system_verilog_simulation_float: float = float(system_verilog_simulation_line)
+                        high_level_simulation_line: str = high_level_simulation_csv_file.readline().rsplit(",")[0]
+                        if high_level_simulation_line == "":
+                            break
+                        high_level_simulation_float: float = float(high_level_simulation_line)
+                        comparison_csv_file.write(str(system_verilog_simulation_float - high_level_simulation_float) + ",\n")
+                    system_verilog_simulation_csv_file.close()
+                    high_level_simulation_csv_file.close()
+                    comparison_csv_file.close()
+                
+
 if __name__ == '__main__':
     high_level_simulation: DigitalEstimatorParameterGenerator = DigitalEstimatorParameterGenerator(k1 = 32, k2 = 32)
     simulation: cbadc.simulator.PreComputedControlSignalsSimulator = high_level_simulation.simulate_analog_system()
-    #simulation: Iterator[np.ndarray] = high_level_simulation.simulate_analog_system()
-    """step_index: int = 0
-    max_steps: int = 100
-    for step in simulation:
-        print(f"Digital control signal: {step}")
-    for step in simulation:
-        print(f"Repeat digital control signal: {step}")"""
     high_level_simulation.write_control_signal_to_csv_file(simulation)
 
     #high_level_simulation.simulate_digital_estimator_batch()
