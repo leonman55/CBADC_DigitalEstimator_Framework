@@ -59,6 +59,7 @@ def plot_results():
 
 
 class DigitalEstimatorParameterGenerator():
+    path: str = "../df/sim/SystemVerilogFiles"
     # Set the number of analog states
     n_number_of_analog_states: int = 6
     # Set the number of digital states
@@ -94,6 +95,7 @@ class DigitalEstimatorParameterGenerator():
     fir_hf_matrix: np.ndarray
 
     def __init__(self,
+            path: str = "../df/sim/SystemVerilogFiles",
             n_number_of_analog_states: int = 6,
             m_number_of_digital_states: int = n_number_of_analog_states,
             beta: float = 6250.0,
@@ -108,6 +110,7 @@ class DigitalEstimatorParameterGenerator():
             phase: float = np.pi / 3.0,
             offset: float = 0.0,
             size: int = 1 << 12) -> None:
+        self.path = path
         self.n_number_of_analog_states = n_number_of_analog_states
         self.m_number_of_digital_states = m_number_of_digital_states
         self.beta = beta
@@ -124,7 +127,7 @@ class DigitalEstimatorParameterGenerator():
         self.size = size
 
     def write_control_signal_to_csv_file(self, values: np.ndarray):
-        with open("../df/sim/SystemVerilogFiles/control_signal.csv", "w") as csv_file:
+        with open(self.path + "/control_signal.csv", "w") as csv_file:
             for single_control_signal in values:
                 single_control_signal_string: str = ""
                 for bit_index in range(self.m_number_of_digital_states - 1, -1, -1):
@@ -133,7 +136,7 @@ class DigitalEstimatorParameterGenerator():
             csv_file.close()
 
     def write_digital_estimation_fir_to_csv_file(self, values: np.ndarray):
-        with open("../df/sim/SystemVerilogFiles/digital_estimation_high_level.csv", "w") as csv_file:
+        with open(self.path + "/digital_estimation_high_level.csv", "w") as csv_file:
             for single_estimation_value in values:
                 single_estimation_value_string: str = str(single_estimation_value)
                 single_estimation_value_string = single_estimation_value_string.lstrip("[")
@@ -638,8 +641,8 @@ class DigitalEstimatorParameterGenerator():
         lookahead: list[int] = list[int]()
         for lookahead_index in range(self.k2):
             lookahead.append(0)
-        with open("../df/sim/SystemVerilogFiles/control_signal.csv", "r") as input_csv_file:
-            with open("../df/sim/SystemVerilogFiles/digital_estimation_high_level_self_programmed.csv", "w") as output_csv_file:
+        with open(self.path + "/control_signal.csv", "r") as input_csv_file:
+            with open(self.path + "/digital_estimation_high_level_self_programmed.csv", "w") as output_csv_file:
                 lines: list[str] = input_csv_file.readlines()
                 startup_count: int = 0
                 startup_counter: int = 0
@@ -678,9 +681,9 @@ class DigitalEstimatorParameterGenerator():
 
 
     def compare_simulation_system_verilog_to_high_level(self, fixed_point: bool = False, fixed_point_mantissa_bits: int = 0, offset: int = 2):
-        with open("../df/sim/SystemVerilogFiles/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
-            with open("../df/sim/SystemVerilogFiles/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
-                with open("../df/sim/SystemVerilogFiles/digital_estimation_system_verilog_vs_high_level.csv", "w") as comparison_csv_file:
+        with open(self.path + "/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
+            with open(self.path + "/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
+                with open(self.path + "/digital_estimation_system_verilog_vs_high_level.csv", "w") as comparison_csv_file:
                     offset_counter: int = 0
                     while True:
                         while offset_counter < offset:

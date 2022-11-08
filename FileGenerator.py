@@ -1,5 +1,4 @@
 from io import FileIO
-from io import BufferedWriter
 
 
 class FileGenerator:
@@ -14,7 +13,7 @@ class FileGenerator:
         self.file_name = file_name
 
     def open_output_file(self):
-        self.output_file = open(self.file_path + self.file_name, "w")
+        self.output_file = open(self.file_path + "/" + self.file_name, "w")
 
     def write_line(self, line_string: str):
         self.output_file.write(line_string)

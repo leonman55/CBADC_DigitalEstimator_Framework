@@ -116,6 +116,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
     def generate(self):
         high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator(
+            self.path,
             self.configuration_n_number_of_analog_states,
             self.configuration_m_number_of_digital_states,
             self.configuration_beta,
