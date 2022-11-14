@@ -50,14 +50,6 @@ def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lu
     return lut_entry_array
 
 
-def plot_results():
-    with open("../df/sim/SystemVerilogFiles/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
-        with open("../df/sim/SystemVerilogFiles/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
-            pass
-        system_verilog_simulation_csv_file.close()
-        high_level_simulation_csv_file.close()
-
-
 class DigitalEstimatorParameterGenerator():
     path: str = "../df/sim/SystemVerilogFiles"
     # Set the number of analog states
@@ -193,6 +185,7 @@ class DigitalEstimatorParameterGenerator():
 
         # Instantiate the analog signal
         analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
+        #analog_signal = cbadc.analog_signal.ConstantSignal(0.2)
         # print to ensure correct parametrization.
         print(analog_signal)
 
@@ -563,6 +556,7 @@ class DigitalEstimatorParameterGenerator():
 
         # Instantiate the analog signal
         analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
+        #analog_signal = cbadc.analog_signal.ConstantSignal(0.2)
         # print to ensure correct parametrization.
         print(analog_signal)
 
@@ -704,14 +698,59 @@ class DigitalEstimatorParameterGenerator():
                     system_verilog_simulation_csv_file.close()
                     high_level_simulation_csv_file.close()
                     comparison_csv_file.close()
+
+
+    def plot_results(self):
+        with open(self.path + "/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
+            with open(self.path + "/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
+                with open(self.path + "/digital_estimation_high_level_self_programmed.csv", "r") as high_level_simulation_self_programmed_csv_file:
+                    digital_estimation_results: list[float] = list[float]()
+                    for line in system_verilog_simulation_csv_file.readlines():
+                        digital_estimation_results.append(float(line.rsplit(",")[0]))
+                    digital_estimation_high_level_results: list[float] = list[float]()
+                    for line in high_level_simulation_csv_file.readlines():
+                        digital_estimation_high_level_results.append(float(line.rsplit(",")[0]))
+                    digital_estimation_high_level_self_programmed_results: list[float] = list[float]()
+                    for line in high_level_simulation_self_programmed_csv_file.readlines():
+                        digital_estimation_high_level_self_programmed_results.append(float(line.rsplit(",")[0]))
+                    plt.plot(digital_estimation_results, linewidth = 0.25)
+                    plt.savefig(self.path + "/digital_estimation.pdf")
+                    plt.clf()
+                    plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
+                    plt.savefig(self.path + "/digital_estimation_high_level.pdf")
+                    plt.clf()
+                    plt.plot(digital_estimation_high_level_self_programmed_results, linewidth = 0.25)
+                    plt.savefig(self.path + "/digital_estimation_high_level_self_programmed.pdf")
+                    plt.clf()
+                    plt.plot(digital_estimation_results, linewidth = 0.25)
+                    plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
+                    plt.savefig(self.path + "/digital_estimation_system_verilog_&_high_level.pdf")
+                    plt.clf()
+                    plt.psd(digital_estimation_results[1024:])
+                    plt.psd(digital_estimation_high_level_results[1024:])
+                    plt.savefig(self.path + "/psd.png")
+                    plt.clf()
+
+                    system_verilog_simulation_csv_file.close()
+                    high_level_simulation_csv_file.close()
+        
+        with open(self.path + "/digital_estimation_system_verilog_vs_high_level.csv") as digital_estimation_system_verilog_vs_high_level_csv_file:
+            digital_estimation_system_verilog_vs_high_level_results: list[float] = list[float]()
+            for line in digital_estimation_system_verilog_vs_high_level_csv_file.readlines():
+                digital_estimation_system_verilog_vs_high_level_results.append(float(line.rsplit(",")[0]))
+            plt.plot(digital_estimation_system_verilog_vs_high_level_results, linewidth = 0.25)
+            plt.savefig(self.path + "/digital_estimation_system_verilog_vs_high_level.pdf")
+            plt.clf()
                 
 
 if __name__ == '__main__':
-    high_level_simulation: DigitalEstimatorParameterGenerator = DigitalEstimatorParameterGenerator(k1 = 32, k2 = 32)
-    simulation: cbadc.simulator.PreComputedControlSignalsSimulator = high_level_simulation.simulate_analog_system()
-    high_level_simulation.write_control_signal_to_csv_file(simulation)
+    high_level_simulation: DigitalEstimatorParameterGenerator = DigitalEstimatorParameterGenerator(k1 = 512, k2 = 2, data_width = 16)
+    #simulation: cbadc.simulator.PreComputedControlSignalsSimulator = high_level_simulation.simulate_analog_system()
+    #high_level_simulation.write_control_signal_to_csv_file(simulation)
 
-    #high_level_simulation.simulate_digital_estimator_batch()
+    estimator = high_level_simulation.simulate_digital_estimator_fir()
+    SystemVerilogSyntaxGenerator.ndarray_to_system_verilog_array(np.array(convert_coefficient_matrix_to_lut_entries(high_level_simulation.fir_hb_matrix, 4)))
+    SystemVerilogSyntaxGenerator.ndarray_to_system_verilog_array(np.array(convert_coefficient_matrix_to_lut_entries(high_level_simulation.fir_hf_matrix, 4)))
     """high_level_simulation.simulate_digital_estimator_fir()
     lut_entry_list: list[int] = convert_coefficient_matrix_to_lut_entries(high_level_simulation.fir_hb_matrix, lut_input_width = 4)
     lut_entry_array: np.ndarray = np.array(lut_entry_list)

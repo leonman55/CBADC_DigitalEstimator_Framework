@@ -35,11 +35,12 @@ class DigitalEstimatorGenerator():
     configuration_rho: float = -1e-2
     configuration_kappa: float = -1.0
     configuration_eta2: float = 1e7
-    configuration_lookback_length: int = 137
-    configuration_lookahead_length: int = 283
+    configuration_lookback_length: int = 512
+    configuration_lookahead_length: int = 4
     configuration_fir_data_width: int = 31
     configuration_fir_lut_input_width: int = 4
-    configuration_sumulation_length: int = 2 << 10
+    configuration_simulation_length: int = 2 << 12
+    configuration_offset: int = 0.1
 
     def generate(self):
         digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, "DigitalEstimatorTestbench")
@@ -54,7 +55,7 @@ class DigitalEstimatorGenerator():
         digital_estimator_testbench.configuration_m_number_of_digital_states = self.configuration_m_number_of_digital_states
         digital_estimator_testbench.configuration_fir_data_width = self.configuration_fir_data_width
         digital_estimator_testbench.configuration_fir_lut_input_width = self.configuration_fir_lut_input_width
-        digital_estimator_testbench.configuration_simulation_length = self.configuration_sumulation_length
+        digital_estimator_testbench.configuration_simulation_length = self.configuration_simulation_length
         digital_estimator_testbench.generate()
 
         digital_estimator: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper(self.path, "DigitalEstimator")
@@ -79,7 +80,8 @@ class DigitalEstimatorGenerator():
             self.configuration_lookback_length,
             self.configuration_lookahead_length,
             self.configuration_fir_data_width,
-            size = self.configuration_sumulation_length
+            size = self.configuration_simulation_length,
+            offset = self.configuration_offset
         )
         high_level_simulation.write_control_signal_to_csv_file(high_level_simulation.simulate_analog_system())
         high_level_simulation.simulate_digital_estimator_fir()
@@ -128,6 +130,8 @@ class DigitalEstimatorGenerator():
             print(f"{fail_count} assertions failed!")
 
         high_level_simulation.compare_simulation_system_verilog_to_high_level()
+
+        high_level_simulation.plot_results()
 
 
     def write_xrun_simulation_file(self, name: str, settings: list[str]):
