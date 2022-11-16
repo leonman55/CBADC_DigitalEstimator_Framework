@@ -31,16 +31,17 @@ class DigitalEstimatorGenerator():
     configuration_number_of_timesteps_in_clock_cycle: int = 10
     configuration_n_number_of_analog_states: int = 4
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
-    configuration_beta: float = 6250.0
+    configuration_beta: float = 10000.0
     configuration_rho: float = -1e-2
     configuration_kappa: float = -1.0
     configuration_eta2: float = 1e7
-    configuration_lookback_length: int = 512
-    configuration_lookahead_length: int = 4
+    configuration_lookback_length: int = 256
+    configuration_lookahead_length: int = 256
     configuration_fir_data_width: int = 31
     configuration_fir_lut_input_width: int = 4
-    configuration_simulation_length: int = 2 << 12
-    configuration_offset: int = 0.1
+    configuration_oversampling_rate: int = 1000
+    configuration_simulation_length: int = configuration_oversampling_rate * 10
+    configuration_offset: int = 0.0
 
     def generate(self):
         digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, "DigitalEstimatorTestbench")
@@ -91,7 +92,7 @@ class DigitalEstimatorGenerator():
         simulation_settings: list[str] = list[str]()
         simulation_settings.append("source ~/pro/acmos2/virtuoso/setup_user")
         simulation_settings.append("source ~/pro/fall2022/bash/setup_user")
-        simulation_settings.append("cd " + self.path)
+        #simulation_settings.append("cd " + self.path)
         simulation_settings.append("xrun -f xrun_options")
         self.write_xrun_simulation_file("sim.sh", simulation_settings)
 

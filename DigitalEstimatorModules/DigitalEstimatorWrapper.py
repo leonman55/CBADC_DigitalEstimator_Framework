@@ -137,17 +137,18 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
 
     logic [LOOKBACK_SIZE - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] lookback_register;
 
-    //assign lookback_register = sample_shift_register[TOTAL_LOOKUP_REGISTER_LENGTH - 1 : LOOKAHEAD_SIZE];
-    assign lookback_register = sample_shift_register[LOOKBACK_SIZE - 1 : 0];
+    assign lookback_register = sample_shift_register[TOTAL_LOOKUP_REGISTER_LENGTH - 1 : LOOKAHEAD_SIZE];
+    //assign lookback_register = sample_shift_register[LOOKBACK_SIZE - 1 : 0];
 
     logic [LOOKAHEAD_SIZE - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] lookahead_register;
 
-    /*generate
+    generate
         for(genvar lookahead_index = 0; lookahead_index < LOOKAHEAD_SIZE; lookahead_index++) begin
             assign lookahead_register[lookahead_index] = sample_shift_register[LOOKAHEAD_SIZE - 1 - lookahead_index];
         end
-    endgenerate*/
-    assign lookahead_register = sample_shift_register[TOTAL_LOOKUP_REGISTER_LENGTH - 1 : LOOKBACK_SIZE];
+    endgenerate
+    //assign lookahead_register = sample_shift_register[TOTAL_LOOKUP_REGISTER_LENGTH - 1 : LOOKBACK_SIZE];
+    //assign lookahead_register = sample_shift_register[LOOKAHEAD_SIZE - 1 : 0];
 
     logic [LOOKBACK_LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_results;
     logic [LOOKAHEAD_LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_results;

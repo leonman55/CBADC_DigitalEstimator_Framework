@@ -233,7 +233,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             initial begin
                 lookback_lookup_table_entries = """
         content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n"
-        content += """lookahead_lookup_table_entries = """
+        content += "lookahead_lookup_table_entries = "
         content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n"
         content += """
             end
