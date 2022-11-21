@@ -22,6 +22,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     configuration_eta2: float = 1e7
     configuration_lookback_length: int = 5
     configuration_lookahead_length: int = 1
+    configuration_down_sample_rate: int = 1
 
     parameter_control_signal_input_width: dict[str, str] = {"CONTROL_SIGNAL_INPUT_WIDTH": str(configuration_m_number_of_digital_states)}
     parameter_alu_input_width: dict[str, str] = {"ALU_INPUT_WIDTH": "32"}
@@ -101,9 +102,11 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         self.syntax_generator.end_module()
         self.syntax_generator.close()"""
 
-    content: str = """module DigitalEstimator #(
-        parameter N_NUMBER_ANALOG_STATES = 6,
-        parameter M_NUMBER_DIGITAL_STATES = 6,
+        
+    def generate(self):
+        content: str = f"""module DigitalEstimator #(
+        parameter N_NUMBER_ANALOG_STATES = {self.configuration_n_number_of_analog_states},
+        parameter M_NUMBER_DIGITAL_STATES = {self.configuration_m_number_of_digital_states},
         parameter LOOKBACK_SIZE = 37,
         parameter LOOKAHEAD_SIZE = 17,
         localparam TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
@@ -113,7 +116,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         localparam LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT = LOOKBACK_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
         localparam LOOKAHEAD_LOOKUP_TABLE_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / LOOKUP_TABLE_INPUT_WIDTH)),
         localparam LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT = LOOKAHEAD_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
-        parameter OUTPUT_DATA_WIDTH = 16
+        parameter OUTPUT_DATA_WIDTH = 16,
+        parameter DOWN_SAMPLE_RATE = {self.configuration_down_sample_rate}
     ) (
         input wire rst,
         input wire clk,
@@ -124,14 +128,28 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         output logic [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output
 );
 
+    """
+        if self.configuration_down_sample_rate > 1:
+            content += f"""logic clk_downsample;
+    """
+        content += f"""logic clk_sample_shift_register;
+    logic [DOWN_SAMPLE_RATE - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] downsample_accumulate_output;
     logic [TOTAL_LOOKUP_REGISTER_LENGTH - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] sample_shift_register;
-
-    always_ff @(posedge clk) begin
+    
+    """
+        if self.configuration_down_sample_rate > 1:
+            content += f"""assign clk_sample_shift_register = clk_downsample | rst;
+            """
+        else:
+            content += f"""assign clk_sample_shift_register = clk | rst;
+            """
+        content += """
+    always_ff @(posedge clk_sample_shift_register) begin
         if(rst == 1'b1) begin
-            sample_shift_register <= {(M_NUMBER_DIGITAL_STATES * TOTAL_LOOKUP_REGISTER_LENGTH) - 1{1'b0}};
+            sample_shift_register <= {{(M_NUMBER_DIGITAL_STATES * TOTAL_LOOKUP_REGISTER_LENGTH) - 1{{1'b0}}}};
         end
         else begin
-            sample_shift_register <= {sample_shift_register[TOTAL_LOOKUP_REGISTER_LENGTH - 2 : 0], digital_control_input};
+            sample_shift_register <= {{sample_shift_register[TOTAL_LOOKUP_REGISTER_LENGTH - 1 - DOWN_SAMPLE_RATE : 0], downsample_accumulate_output}};
         end
     end
 
@@ -158,12 +176,38 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
 
     assign signal_estimation_output = adder_block_lookback_result + adder_block_lookahead_result;
 
+    
+    """
+        if self.configuration_down_sample_rate > 1:
+            content += f"""ClockDivider #(
+            .DOWN_SAMPLE_RATE({self.configuration_down_sample_rate})
+        )
+        clock_divider (
+            .rst(rst),
+            .clk(clk),
+            .clk_downsample(clk_downsample),
+            .clock_divider_counter()
+    );
+
+    """
+        content += f"""InputDownsampleAccumulateRegister #(
+            .REGISTER_LENGTH({self.configuration_down_sample_rate}),
+            .DATA_WIDTH({self.configuration_m_number_of_digital_states})
+        )
+        input_downsample_accumulate_register (
+            .rst(rst),
+            .clk(clk),
+            .in(digital_control_input),
+            .out(downsample_accumulate_output)
+    );
+
     LookUpTableBlock #(
             .TOTAL_INPUT_WIDTH(LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES),
             .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         lookback_lookup_table_block (
+            .rst(rst),
             .input_register(lookback_register),
             .lookup_table_entries(lookback_lookup_table_entries),
             .lookup_table_results(lookback_lookup_table_results)
@@ -185,6 +229,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         lookahead_lookup_table_block (
+            .rst(rst),
             .input_register(lookahead_register),
             .lookup_table_entries(lookahead_lookup_table_entries),
             .lookup_table_results(lookahead_lookup_table_results)
@@ -202,7 +247,6 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
 
 
 endmodule"""
-        
-    def generate(self):
-        self.syntax_generator.single_line_no_linebreak(self.content, indentation = 0)
+
+        self.syntax_generator.single_line_no_linebreak(content, indentation = 0)
         self.syntax_generator.close()

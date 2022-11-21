@@ -30,6 +30,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_fir_data_width: int = 64
     configuration_fir_lut_input_width: int = 4
     configuration_simulation_length: int = 2 << 12
+    configuration_down_sample_rate: int = 1
 
     parameter_alu_input_width: dict[str, str] = {"ALU_INPUT_WIDTH": "32"}
     parameter_control_signal_input_width: dict[str, str] = {"CONTROL_SIGNAL_INPUT_WIDTH": str(configuration_m_number_of_digital_states)}
@@ -126,166 +127,170 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             self.configuration_lookback_length,
             self.configuration_lookahead_length,
             self.configuration_fir_data_width,
+            self.configuration_down_sample_rate,
             size = self.configuration_simulation_length
         )
         high_level_simulation.simulate_digital_estimator_fir()
 
         content: str = f"""module DigitalEstimatorTestbench #(
-            parameter CLOCK_PERIOD = 10,
-            parameter CLOCK_HALF_PERIOD = $ceil(CLOCK_PERIOD / 2.0),
+    parameter CLOCK_PERIOD = 10,
+    parameter CLOCK_HALF_PERIOD = $ceil(CLOCK_PERIOD / 2.0),
+    parameter DOWN_SAMPLE_RATE = {self.configuration_down_sample_rate},
 
-            parameter N_NUMBER_ANALOG_STATES = {self.configuration_n_number_of_analog_states},
-            parameter M_NUMBER_DIGITAL_STATES = {self.configuration_m_number_of_digital_states},
-            parameter LOOKAHEAD_SIZE = {self.configuration_lookahead_length},
-            parameter LOOKBACK_SIZE = {self.configuration_lookback_length},
-            parameter TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
-            parameter OUTPUT_DATA_WIDTH = {self.configuration_fir_data_width},
+    parameter N_NUMBER_ANALOG_STATES = {self.configuration_n_number_of_analog_states},
+    parameter M_NUMBER_DIGITAL_STATES = {self.configuration_m_number_of_digital_states},
+    parameter LOOKAHEAD_SIZE = {self.configuration_lookahead_length},
+    parameter LOOKBACK_SIZE = {self.configuration_lookback_length},
+    parameter TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
+    parameter OUTPUT_DATA_WIDTH = {self.configuration_fir_data_width},
 
-            parameter INPUT_WIDTH = 4
-        );"""
+    parameter INPUT_WIDTH = 4
+);"""
         content += """
 
-            localparam LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH) + (((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)));
-            localparam LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH) + (((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)));
+    localparam LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH) + (((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)));
+    localparam LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH) + (((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)));
 
-            logic rst;
-            logic clk;
-            logic [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input;
-            //logic [(LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookback_lookup_table_entries;
-            logic [LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
-            //logic [(LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookahead_lookup_table_entries;
-            logic [LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
-            wire signed [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output;
-            wire signal_estimation_valid_out;
+    logic rst;
+    logic clk;
+    logic [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input;
+    //logic [(LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookback_lookup_table_entries;
+    logic [LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
+    //logic [(LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookahead_lookup_table_entries;
+    logic [LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
+    wire signed [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output;
+    wire signal_estimation_valid_out;
 
-            logic [4 - 1 : 0] look_up_table_input;
-            logic [2**4 - 1 : 0][16 - 1 : 0] memory;
-            wire [16 - 1 : 0] look_up_table_output;
 
-            always begin
-                clk = 1'b0;
-                #CLOCK_HALF_PERIOD;
-                clk = 1'b1;
-                #CLOCK_HALF_PERIOD;
-            end
+    always begin
+        clk = 1'b0;
+        #CLOCK_HALF_PERIOD;
+        clk = 1'b1;
+        #CLOCK_HALF_PERIOD;
+    end
 
-            initial begin
-                for(logic [4 : 0] index = 0; index < 2**4; index++) begin
-                    memory[index] = index;
-                end
-            end
+    initial begin
+        static int control_signal_file = $fopen("./control_signal.csv", "r");
+        if(control_signal_file == 0) begin
+            $error("Control signal input file could not be opened!");
+            $finish;
+        end
 
-            /*always_ff @(posedge clk) begin
-                if(rst == 1) begin
-                    digital_control_input <= 1'b0;
-                end
-                else begin
-                    digital_control_input <= digital_control_input + 1'b1;
-                end
-            end*/
+        @(negedge rst);
+        @(posedge clk);
 
-            initial begin
-                static int control_signal_file = $fopen("./control_signal.csv", "r");
-                if(control_signal_file == 0) begin
-                    $error("Control signal input file could not be opened!");
-                    $finish;
-                end
+        while($fscanf(control_signal_file, "%b,\\n", digital_control_input) > 0) begin
+            @(posedge clk);
+        end
 
-                @(negedge rst);
-                @(posedge clk);
+        $fclose(control_signal_file);
 
-                while($fscanf(control_signal_file, "%b,\\n", digital_control_input) > 0) begin
-                    @(posedge clk);
-                end
+        $finish(0);
+    end
 
-                $fclose(control_signal_file);
+    initial begin
+        static int digital_estimation_output_file = $fopen("./digital_estimation.csv", "w");
+        if(digital_estimation_output_file == 0) begin
+            $error("Digital estimation output file could not be opened!");
+            $finish;
+        end
 
-                $finish(0);
-            end
+        @(negedge rst);
+        @(posedge clk);
+        @(posedge clk);
 
-            initial begin
-                static int digital_estimation_output_file = $fopen("./digital_estimation.csv", "w");
-                if(digital_estimation_output_file == 0) begin
-                    $error("Digital estimation output file could not be opened!");
-                    $finish;
-                end
+        repeat ((DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil(real'(DOWN_SAMPLE_RATE) / 2.0) - 1)) begin
+            @(posedge clk);
+        end
 
-                @(negedge rst);
-                @(posedge clk);
-                @(posedge clk);
+        forever begin
+            //$fwrite(digital_estimation_output_file, "%d, %d, %d\\n", signal_estimation_output, dut_digital_estimator.adder_block_lookback_result, dut_digital_estimator.adder_block_lookahead_result);
+            $fwrite(digital_estimation_output_file, "%f, %f, %f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookback_result) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookahead_result) / (2**(OUTPUT_DATA_WIDTH - 1)));
+            @(posedge clk);
+        end
+    end
 
-                forever begin
-                    //$fwrite(digital_estimation_output_file, "%d, %d, %d\\n", signal_estimation_output, dut_digital_estimator.adder_block_lookback_result, dut_digital_estimator.adder_block_lookahead_result);
-                    $fwrite(digital_estimation_output_file, "%f, %f, %f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookback_result) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookahead_result) / (2**(OUTPUT_DATA_WIDTH - 1)));
-                    @(posedge clk);
-                end
-            end
+    initial begin
+        rst = 1'b1;
+        #(2 * CLOCK_PERIOD);
+        rst = 1'b0;
+        #CLOCK_HALF_PERIOD;
+    end
 
-            /*initial begin
-                for(int lookback_entry_index = 0; lookback_entry_index < LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT; lookback_entry_index++) begin
-                    lookback_lookup_table_entries[lookback_entry_index * OUTPUT_DATA_WIDTH +: OUTPUT_DATA_WIDTH] = -1;
-                end
-                for(int lookahead_entry_index = 0; lookahead_entry_index < LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT; lookahead_entry_index++) begin
-                    lookahead_lookup_table_entries[lookahead_entry_index * OUTPUT_DATA_WIDTH +: OUTPUT_DATA_WIDTH] = 1;
-                end
-            end*/
-
-            initial begin
-                lookback_lookup_table_entries = """
+    initial begin
+        lookback_lookup_table_entries = """
         content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n"
         content += "lookahead_lookup_table_entries = "
         content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n"
-        content += """
-            end
+        content += f"""
+    end
 
-            initial begin
-                rst = 1'b1;
-                #(2 * CLOCK_PERIOD);
-                rst = 1'b0;
-                #CLOCK_HALF_PERIOD;
-
-                for(logic [INPUT_WIDTH : 0] index = 0; index < 2**INPUT_WIDTH; index++) begin
-                    look_up_table_input = index;
-                    #CLOCK_PERIOD;
-                    assert(look_up_table_output === index)
-                        $display("PASS: LUT output equals index.");
-                    else
-                        $display("FAIL: LUT: %d\\tindex:%d", look_up_table_output, index);
-                end
-            end
-
-
-            DigitalEstimator #(
-                    .N_NUMBER_ANALOG_STATES(N_NUMBER_ANALOG_STATES),
-                    .M_NUMBER_DIGITAL_STATES(M_NUMBER_DIGITAL_STATES),
-                    .LOOKBACK_SIZE(LOOKBACK_SIZE),
-                    .LOOKAHEAD_SIZE(LOOKAHEAD_SIZE),
-                    .LOOKUP_TABLE_INPUT_WIDTH(INPUT_WIDTH),
-                    .LOOKUP_TABLE_DATA_WIDTH(OUTPUT_DATA_WIDTH),
-                    .OUTPUT_DATA_WIDTH(OUTPUT_DATA_WIDTH)
-                )
-                dut_digital_estimator (
-                    .rst(rst),
-                    .clk(clk),
-                    .digital_control_input(digital_control_input),
-                    .lookback_lookup_table_entries(lookback_lookup_table_entries),
-                    .lookahead_lookup_table_entries(lookahead_lookup_table_entries),
-                    .signal_estimation_valid_out(signal_estimation_valid_out),
-                    .signal_estimation_output(signal_estimation_output)
-            );
-
-            LookUpTable #(
-                    .INPUT_WIDTH(4),
-                    .DATA_WIDTH(16)
-                )
-                dut_look_up_table (
-                    .in(look_up_table_input),
-                    .memory(memory),
-                    .out(look_up_table_output)
-            );
+    DigitalEstimator #(
+            .N_NUMBER_ANALOG_STATES(N_NUMBER_ANALOG_STATES),
+            .M_NUMBER_DIGITAL_STATES(M_NUMBER_DIGITAL_STATES),
+            .LOOKBACK_SIZE(LOOKBACK_SIZE),
+            .LOOKAHEAD_SIZE(LOOKAHEAD_SIZE),
+            .LOOKUP_TABLE_INPUT_WIDTH(INPUT_WIDTH),
+            .LOOKUP_TABLE_DATA_WIDTH(OUTPUT_DATA_WIDTH),
+            .OUTPUT_DATA_WIDTH(OUTPUT_DATA_WIDTH),
+            .DOWN_SAMPLE_RATE({self.configuration_down_sample_rate})
+        )
+        dut_digital_estimator (
+            .rst(rst),
+            .clk(clk),
+            .digital_control_input(digital_control_input),
+            .lookback_lookup_table_entries(lookback_lookup_table_entries),
+            .lookahead_lookup_table_entries(lookahead_lookup_table_entries),
+            .signal_estimation_valid_out(signal_estimation_valid_out),
+            .signal_estimation_output(signal_estimation_output)
+    );
 
 
-        endmodule"""
+    bind AdderCombinatorial AdderCombinatorialAssertions #(
+            .INPUT_WIDTH(INPUT_WIDTH)
+        )
+        adder_combinatorial_bind (
+            .rst(rst),
+            .input_0(input_0),
+            .input_1(input_1),
+            .out(out)
+    );
+
+    bind AdderBlockCombinatorial AdderBlockCombinatorialAssertions #(
+            .INPUT_COUNT(INPUT_COUNT),
+            .INPUT_WIDTH(INPUT_WIDTH)
+        )
+        adder_block_combinatorial_bind (
+            .rst(rst),
+            .in(in),
+            .out(out)
+    );
+
+    bind LookUpTable LookUpTableAssertions #(
+            .INPUT_WIDTH(INPUT_WIDTH),
+            .DATA_WIDTH(DATA_WIDTH)
+        )
+        look_up_table_bind (
+            .rst(rst),
+            .in(in),
+            .memory(memory),
+            .out(out)
+    );
+
+    bind LookUpTableBlock LookUpTableBlockAssertions #(
+            .TOTAL_INPUT_WIDTH(TOTAL_INPUT_WIDTH),
+            .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
+            .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        look_up_table_block_bind (
+            .rst(rst),
+            .input_register(input_register),
+            .lookup_table_entries(lookup_table_entries),
+            .lookup_table_results(lookup_table_results)
+    );
+
+
+endmodule"""
 
         self.syntax_generator.single_line_no_linebreak(content, indentation = 0)
         self.syntax_generator.close()

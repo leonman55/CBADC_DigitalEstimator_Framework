@@ -53,7 +53,6 @@ class DigitalEstimatorParameterGenerator():
     beta: float = 6250.0
     rho: float = -1e-2
     kappa: float = -1.0
-    # Set the bandwidth of the estimator
     eta2 = 1e7
     # Set the batch size of lookback
     #K1 = sequence_length
@@ -63,21 +62,25 @@ class DigitalEstimatorParameterGenerator():
     # Digital estimator data width
     data_width: int = 64
 
-    # Digital Control update time
+    down_sample_rate: int = 1
+
+    # Sampling time
     T: float = 0
 
     # Values for input stimulus generation
     # amplitude of the signal
     amplitude = 0.5
     # Choose the sinusoidal frequency via an oversampling ratio (OSR).
-    OSR = 1 << 9
+    OSR = 25
     # We also specify a phase an offset these are hovewer optional.
     phase = np.pi / 3
     offset = 0.0
-    # The analog signal
-    analog_signal = None
+
     # Length of the simulation
     size: int = 1 << 12
+
+    # Set the bandwidth of the estimator
+    bandwidth = 1e6
 
     # FIR filter coefficients
     fir_h_matrix: np.ndarray
@@ -95,11 +98,13 @@ class DigitalEstimatorParameterGenerator():
             k1: int = 5,
             k2: int = 1,
             data_width: int = 64,
+            down_sample_rate: int = 1,
             amplitude: float = 0.5,
-            OSR: int = 1 << 9,
+            OSR: int = 25,
             phase: float = np.pi / 3.0,
             offset: float = 0.0,
-            size: int = 1 << 12) -> None:
+            size: int = 1 << 12,
+            bandwidth: int = 1e6) -> None:
         self.path = path
         self.n_number_of_analog_states = n_number_of_analog_states
         self.m_number_of_digital_states = m_number_of_digital_states
@@ -110,14 +115,13 @@ class DigitalEstimatorParameterGenerator():
         self.k1 = k1
         self.k2 = k2
         self.data_width = data_width
+        self.down_sample_rate = down_sample_rate
         self.amplitude = amplitude
         self.OSR = OSR
         self.phase = phase
         self.offset = offset
-        self.T = 1.0 / (2 * self.beta)
-        frequency = 1.0 / (self.T * self.OSR)
-        self.analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
         self.size = size
+        self.bandwidth = bandwidth
 
     def write_control_signal_to_csv_file(self, values: np.ndarray):
         with open(self.path + "/control_signal.csv", "w") as csv_file:
@@ -139,6 +143,14 @@ class DigitalEstimatorParameterGenerator():
             csv_file.close()
 
 
+    def get_eta2(self, AF, BW: int):
+        eta2 = (
+        np.linalg.norm(
+        AF.analog_system.transfer_function_matrix(
+        np.array([2 * np.pi * BW])
+        )) ** 2 )
+        return eta2
+
     def simulate_analog_system(self):
         # Setup the analog System.
         # We fix the number of analog states.
@@ -151,11 +163,11 @@ class DigitalEstimatorParameterGenerator():
 
         # In this example, each nodes amplification and local feedback will be set
         # identically.
-        betaVec = self.beta * np.ones(self.n_number_of_analog_states)
-        rhoVec = betaVec * self.rho
-        kappaVec = self.kappa * self.beta * np.eye(self.n_number_of_analog_states)
+        #betaVec = self.beta * np.ones(self.n_number_of_analog_states)
+        #rhoVec = betaVec * self.rho
+        #kappaVec = self.kappa * self.beta * np.eye(self.n_number_of_analog_states)
         # Instantiate a chain-of-integrators analog system.
-        analog_system = cbadc.analog_system.ChainOfIntegrators(betaVec, rhoVec, kappaVec)
+        #analog_system = cbadc.analog_system.ChainOfIntegrators(betaVec, rhoVec, kappaVec)
 
         # LeapFrog analog system
         #gamma = self.OSR / np.pi
@@ -164,24 +176,34 @@ class DigitalEstimatorParameterGenerator():
         #alpha_vec = -(omega_3dB / 2) / gamma * np.ones(self.n_number_of_analog_states - 1)
         #rho_vec = np.zeros(self.n_number_of_analog_states)
         #T = 1.0 / (2.0 * beta_vec[0])
+        #self.T = T
         #Gamma = np.diag(-beta_vec)
         #analog_system = cbadc.analog_system.LeapFrog(beta_vec, alpha_vec, rho_vec, Gamma)
 
+        analog_frontend = cbadc.synthesis.get_leap_frog(OSR = self.OSR, N = self.n_number_of_analog_states, BW = self.bandwidth)
+        eta2 = self.get_eta2(analog_frontend, self.bandwidth)
+        self.T = analog_frontend.digital_control.clock.T
+
         # print the analog system such that we can very it being correctly initalized.
-        print(analog_system)
+        print(analog_frontend.analog_system, "\n")
+        print(analog_frontend.digital_control)
 
 
         # Setup the digital control.
         # Set the time period which determines how often the digital control updates.
-        T = 1.0 / (2 * self.beta)
+        #T = 1.0 / (2 * self.beta)
         # Instantiate a corresponding clock.
-        clock = cbadc.analog_signal.Clock(T)
+        #clock = cbadc.analog_signal.Clock(T)
         # Set the number of digital controls to be same as analog states.
         #M = N
         # Initialize the digital control.
-        digital_control = cbadc.digital_control.DigitalControl(clock, self.m_number_of_digital_states)
+        #digital_control = cbadc.digital_control.DigitalControl(clock, self.m_number_of_digital_states)
         # print the digital control to verify proper initialization.
-        print(digital_control)
+
+        #clock = cbadc.analog_signal.Clock(T)
+        #digital_control = cbadc.digital_control.DigitalControl(clock, self.m_number_of_digital_states)
+
+        #print(digital_control)
 
 
         # Setup the analog stimulation signal
@@ -191,31 +213,37 @@ class DigitalEstimatorParameterGenerator():
         #OSR = 1 << 9
         #frequency = 1.0 / (T * self.OSR)
         #frequency = self.eta2 / 32.0
+        #frequency = 1.0 / (T * 1024)
+        frequency = self.bandwidth / 1000
 
         # We also specify a phase an offset these are hovewer optional.
         #phase = np.pi / 3
         #offset = 0.0
 
         # Instantiate the analog signal
-        #analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
+        analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
         #analog_signal = cbadc.analog_signal.ConstantSignal(0.2)
         # print to ensure correct parametrization.
         #print(analog_signal)
-        print(self.analog_signal)
+        print(analog_signal)
 
 
         # Setup the simulation of the system
         # Simulate for 2^18 control cycles.
         #size = 1 << 18
         #size = 1 << 12
-        end_time = T * self.size
+        #end_time = T * self.size
+        end_time = self.size / self.bandwidth
 
         # Instantiate the simulator.
         simulator = cbadc.simulator.get_simulator(
-            analog_system,
-            digital_control,
-            [self.analog_signal],
-            clock = clock,
+            #analog_system,
+            analog_system = analog_frontend.analog_system,
+            #digital_control,
+            digital_control = analog_frontend.digital_control,
+            input_signal = [analog_signal],
+            #clock = clock,
+            clock = analog_frontend.digital_control.clock,
             t_stop = end_time,
         )
         # Depending on your analog system the step above might take some time to
@@ -412,15 +440,16 @@ class DigitalEstimatorParameterGenerator():
                     gamma[row_index_gamma].append(float(0.0))
 
         #Gamma_tildeT = np.eye(N)
-        gamma_tildeT = np.eye(self.n_number_of_analog_states)
+        #gamma_tildeT = np.eye(self.n_number_of_analog_states)
 
-        analog_system = cbadc.analog_system.AnalogSystem(a, b, ct, gamma, gamma_tildeT)
+        #analog_system = cbadc.analog_system.AnalogSystem(a, b, ct, gamma, gamma_tildeT)
         #gamma = self.OSR / np.pi
         #omega_3dB = 2 * np.pi * self.eta2
         #beta_vec = gamma * (omega_3dB / 2) * np.ones(self.n_number_of_analog_states)
         #alpha_vec = -(omega_3dB / 2) / gamma * np.ones(self.n_number_of_analog_states - 1)
         #rho_vec = np.zeros(self.n_number_of_analog_states)
         #T = 1.0 / (2.0 * beta_vec[0])
+        #self.T = T
         #Gamma = np.diag(-beta_vec)
         #analog_system = cbadc.analog_system.LeapFrog(beta_vec, alpha_vec, rho_vec, Gamma)
         #betaVec = self.beta * np.ones(self.n_number_of_analog_states)
@@ -429,14 +458,14 @@ class DigitalEstimatorParameterGenerator():
         # Instantiate a chain-of-integrators analog system.
         #analog_system = cbadc.analog_system.ChainOfIntegrators(betaVec, rhoVec, kappaVec)
 
-        T = 1.0 / (2 * self.beta)
-        clock = cbadc.analog_signal.Clock(T)
+        #T = 1.0 / (2 * self.beta)
+        #clock = cbadc.analog_signal.Clock(T)
 
-        digital_control = cbadc.digital_control.DigitalControl(clock, self.m_number_of_digital_states)
+        #digital_control = cbadc.digital_control.DigitalControl(clock, self.m_number_of_digital_states)
 
         # Summarize the analog system, digital control, and digital estimator.
-        print(analog_system, "\n")
-        print(digital_control)
+        #print(analog_system, "\n")
+        #print(digital_control)
 
 
         # Setup placeholder dummy control signal
@@ -466,11 +495,17 @@ class DigitalEstimatorParameterGenerator():
         # Set the batch size of lookahead
         #K2 = 1
 
+        # Instantiate LeapFrog analog_system and digital_control
+        analog_frontend = cbadc.synthesis.get_leap_frog(OSR = self.OSR, N = self.n_number_of_analog_states, BW = self.bandwidth)
+        eta2 = self.get_eta2(analog_frontend, self.bandwidth)
+        self.T = analog_frontend.digital_control.clock.T
+
         # Instantiate the digital estimator (this is where the filter coefficients are
         # computed).
-        #digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 1.0))
+        #digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 1.0), downsample = self.down_sample_rate)
+        digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_frontend.analog_system, analog_frontend.digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 1.0), downsample = self.down_sample_rate)
         #digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 4.0))
-        digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2)
+        #digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2)
         print("FIR estimator\n\n", digital_estimator_fir, "\n")
         self.fir_h_matrix = digital_estimator_fir.h
         #self.fir_hb_matrix = digital_estimator_fir.h[0 : self.n_number_of_analog_states - 1, 0 : self.k1]
@@ -486,23 +521,29 @@ class DigitalEstimatorParameterGenerator():
 
         # Set the frequency of the analog simulation signal
         #frequency = 1.0 / (T * self.OSR)
+        #frequency = 1.0 / (T * 1024)
+        frequency = self.bandwidth / 1000
 
         # Instantiate the analog signal
-        #analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
+        analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
         #analog_signal = cbadc.analog_signal.ConstantSignal(0.2)
         # print to ensure correct parametrization.
         #print(analog_signal)
-        print(self.analog_signal)
+        print(analog_signal)
 
         # Setup the simulation time of the system
-        end_time = T * self.size
+        #end_time = T * self.size
+        end_time = self.size / self.bandwidth
 
         # Instantiate the simulator.
         simulator = cbadc.simulator.get_simulator(
-            analog_system,
-            digital_control,
-            [self.analog_signal],
-            clock = clock,
+            #analog_system,
+            analog_system = analog_frontend.analog_system,
+            #digital_control,
+            digital_control = analog_frontend.digital_control,
+            input_signal = [analog_signal],
+            #clock = clock,
+            clock = analog_frontend.digital_control.clock,
             t_stop = end_time,
         )
 
@@ -519,7 +560,7 @@ class DigitalEstimatorParameterGenerator():
         return self.fir_hf_matrix
 
 
-    def simulate_fir_filter(self, number_format_float: bool = False):
+    def simulate_fir_filter_self_programmed(self, number_format: str = "both"):
         lookback: list[int] = list[int]()
         for lookback_index in range(self.k1):
             lookback.append(0)
@@ -527,49 +568,75 @@ class DigitalEstimatorParameterGenerator():
         for lookahead_index in range(self.k2):
             lookahead.append(0)
         with open(self.path + "/control_signal.csv", "r") as input_csv_file:
-            with open(self.path + "/digital_estimation_high_level_self_programmed.csv", "w") as output_csv_file:
-                lines: list[str] = input_csv_file.readlines()
-                startup_count: int = 0
-                startup_counter: int = 0
-                for line in lines:
-                    line = line.rstrip(",\n")
-                    line_int: int = int(line, base = 2)                    
-                    lookahead.append(line_int)
-                    lookback.insert(0, lookahead.pop(0))
-                    lookback.pop(self.k1)
+            output_csv_file_integer = None
+            output_csv_file_float = None
+            if number_format == "integer" or number_format == "both":
+                output_csv_file_integer = open(self.path + "/digital_estimation_high_level_self_programmed_integer.csv", "w")
+            if number_format == "float" or number_format == "both":
+                output_csv_file_float = open(self.path + "/digital_estimation_high_level_self_programmed_float.csv", "w")
 
-                    lookback_result: int = 0
-                    for lookback_index in range(self.k1):
-                        for value_index in range(self.m_number_of_digital_states):
-                            if (lookback[lookback_index] >> value_index) & 1:
-                                lookback_result += self.fir_hb_matrix[0][lookback_index][value_index]
-                            else:
-                                lookback_result -= self.fir_hb_matrix[0][lookback_index][value_index]
-                    lookahead_result: int = 0
-                    for lookahead_index in range(self.k2):
-                        for value_index in range(self.m_number_of_digital_states):
-                            if (lookahead[lookahead_index] >> value_index) & 1:
-                                lookahead_result += self.fir_hf_matrix[0][lookahead_index][value_index]
-                            else:
-                                lookahead_result -= self.fir_hf_matrix[0][lookahead_index][value_index]
-                    if startup_counter < startup_count:
-                        startup_counter += 1
-                        continue
-                    if number_format_float:
-                        lookback_result_float: float = float(lookback_result) / (2.0**(self.data_width - 1))
-                        lookahead_result_float: float = float(lookahead_result) / (2.0**(self.data_width - 1))
-                        output_csv_file. write(str(lookback_result_float + lookahead_result_float) + "," + str(lookback_result_float) + "," + str(lookahead_result_float) + ",\n")
-                    else:
-                        output_csv_file.write(str(lookback_result + lookahead_result) + ", " + str(lookback_result) + ", " + str(lookahead_result) + ",\n")
-                output_csv_file.close()
+            lines: list[str] = input_csv_file.readlines()
+            startup_count: int = 0
+            startup_counter: int = 0
+            for line in lines:
+                line = line.rstrip(",\n")
+                line_int: int = int(line, base = 2)                    
+                lookahead.append(line_int)
+                lookback.insert(0, lookahead.pop(0))
+                lookback.pop(self.k1)
+
+                lookback_result: int = 0
+                for lookback_index in range(self.k1):
+                    for value_index in range(self.m_number_of_digital_states):
+                        if (lookback[lookback_index] >> value_index) & 1:
+                            lookback_result += self.fir_hb_matrix[0][lookback_index][value_index]
+                        else:
+                            lookback_result -= self.fir_hb_matrix[0][lookback_index][value_index]
+                lookahead_result: int = 0
+                for lookahead_index in range(self.k2):
+                    for value_index in range(self.m_number_of_digital_states):
+                        if (lookahead[lookahead_index] >> value_index) & 1:
+                            lookahead_result += self.fir_hf_matrix[0][lookahead_index][value_index]
+                        else:
+                            lookahead_result -= self.fir_hf_matrix[0][lookahead_index][value_index]
+                if startup_counter < startup_count:
+                    startup_counter += 1
+                    continue
+                if number_format == "integer" or number_format == "both":
+                    output_csv_file_integer.write(str(lookback_result + lookahead_result) + ", " + str(lookback_result) + ", " + str(lookahead_result) + ",\n")
+                if number_format == "float" or number_format == "both":
+                    lookback_result_float: float = float(lookback_result) / (2.0**(self.data_width - 1))
+                    lookahead_result_float: float = float(lookahead_result) / (2.0**(self.data_width - 1))
+                    output_csv_file_float. write(str(lookback_result_float + lookahead_result_float) + "," + str(lookback_result_float) + "," + str(lookahead_result_float) + ",\n")
+            output_csv_file_integer.close()
+            output_csv_file_float.close()
             input_csv_file.close()
 
 
-    def compare_simulation_system_verilog_to_high_level(self, fixed_point: bool = False, fixed_point_mantissa_bits: int = 0, offset: int = 2):
+    def compare_simulation_system_verilog_to_high_level(self, fixed_point: bool = False, fixed_point_mantissa_bits: int = 0, offset: int = 0):
         with open(self.path + "/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
             with open(self.path + "/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
                 with open(self.path + "/digital_estimation_system_verilog_vs_high_level.csv", "w") as comparison_csv_file:
-                    offset_counter: int = 0
+                    system_verilog_simulation_results = system_verilog_simulation_csv_file.readlines()
+                    system_verilog_simulation_results = system_verilog_simulation_results[offset : ]
+                    high_level_simulation_results = high_level_simulation_csv_file.readlines()
+
+                    for index in range(len(system_verilog_simulation_results)):
+                        system_verilog_simulation_result = system_verilog_simulation_results[index].rsplit(",")[0]
+                        high_level_simulation_result = high_level_simulation_results[index].rsplit(",")[0]
+
+                        if fixed_point:
+                            system_verilog_simulation_float: float = float(system_verilog_simulation_result) / (2**(fixed_point_mantissa_bits - 1))
+                        else:
+                            system_verilog_simulation_float: float = float(system_verilog_simulation_result)
+                        high_level_simulation_float: float = float(high_level_simulation_result)
+                        comparison_csv_file.write(str(system_verilog_simulation_float - high_level_simulation_float) + ",\n")
+                    system_verilog_simulation_csv_file.close()
+                    high_level_simulation_csv_file.close()
+                    comparison_csv_file.close()
+
+
+                    """offset_counter: int = 0
                     while True:
                         while offset_counter < offset:
                             system_verilog_simulation_csv_file.readline()
@@ -588,50 +655,68 @@ class DigitalEstimatorParameterGenerator():
                         comparison_csv_file.write(str(system_verilog_simulation_float - high_level_simulation_float) + ",\n")
                     system_verilog_simulation_csv_file.close()
                     high_level_simulation_csv_file.close()
-                    comparison_csv_file.close()
+                    comparison_csv_file.close()"""
 
 
     def plot_results(self):
         with open(self.path + "/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
             with open(self.path + "/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
-                with open(self.path + "/digital_estimation_high_level_self_programmed.csv", "r") as high_level_simulation_self_programmed_csv_file:
-                    digital_estimation_results: list[float] = list[float]()
-                    for line in system_verilog_simulation_csv_file.readlines():
-                        digital_estimation_results.append(float(line.rsplit(",")[0]))
-                    digital_estimation_high_level_results: list[float] = list[float]()
-                    for line in high_level_simulation_csv_file.readlines():
-                        digital_estimation_high_level_results.append(float(line.rsplit(",")[0]))
-                    digital_estimation_high_level_self_programmed_results: list[float] = list[float]()
-                    for line in high_level_simulation_self_programmed_csv_file.readlines():
-                        digital_estimation_high_level_self_programmed_results.append(float(line.rsplit(",")[0]))
-                    plt.xlabel("sample number")
-                    plt.ylabel("signal amplitude")
-                    plt.plot(digital_estimation_results, linewidth = 0.25)
-                    plt.savefig(self.path + "/digital_estimation.pdf")
-                    plt.clf()
-                    plt.xlabel("sample number")
-                    plt.ylabel("signal amplitude")
-                    plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
-                    plt.savefig(self.path + "/digital_estimation_high_level.pdf")
-                    plt.clf()
-                    plt.xlabel("sample number")
-                    plt.ylabel("signal amplitude")
-                    plt.plot(digital_estimation_high_level_self_programmed_results, linewidth = 0.25)
-                    plt.savefig(self.path + "/digital_estimation_high_level_self_programmed.pdf")
-                    plt.clf()
-                    plt.xlabel("sample number")
-                    plt.ylabel("signal amplitude")
-                    plt.plot(digital_estimation_results, linewidth = 0.25)
-                    plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
-                    plt.savefig(self.path + "/digital_estimation_system_verilog_&_high_level.pdf")
-                    plt.clf()
-                    plt.psd(digital_estimation_results[1024:])
-                    plt.psd(digital_estimation_high_level_results[1024:])
-                    plt.savefig(self.path + "/psd.pdf")
-                    plt.clf()
+                with open(self.path + "/digital_estimation_high_level_self_programmed_integer.csv", "r") as high_level_simulation_self_programmed_integer_csv_file:
+                    with open(self.path + "/digital_estimation_high_level_self_programmed_float.csv", "r") as high_level_simulation_self_programmed_float_csv_file:
+                        digital_estimation_results: list[float] = list[float]()
+                        for line in system_verilog_simulation_csv_file.readlines():
+                            digital_estimation_results.append(float(line.rsplit(",")[0]))
+                        digital_estimation_high_level_results: list[float] = list[float]()
+                        for line in high_level_simulation_csv_file.readlines():
+                            digital_estimation_high_level_results.append(float(line.rsplit(",")[0]))
+                        digital_estimation_high_level_self_programmed_results_integer: list[int] = list[int]()
+                        for line in high_level_simulation_self_programmed_integer_csv_file.readlines():
+                            digital_estimation_high_level_self_programmed_results_integer.append(float(line.rsplit(",")[0]))
+                        digital_estimation_high_level_self_programmed_results_float: list[float] = list[float]()
+                        for line in high_level_simulation_self_programmed_float_csv_file.readlines():
+                            digital_estimation_high_level_self_programmed_results_float.append(float(line.rsplit(",")[0]))
+                        plt.xlabel("sample number")
+                        plt.ylabel("signal amplitude")
+                        plt.plot(digital_estimation_results, linewidth = 0.25)
+                        plt.savefig(self.path + "/digital_estimation.pdf")
+                        plt.clf()
+                        plt.xlabel("sample number")
+                        plt.ylabel("signal amplitude")
+                        plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
+                        plt.savefig(self.path + "/digital_estimation_high_level.pdf")
+                        plt.clf()
+                        plt.xlabel("sample number")
+                        plt.ylabel("signal amplitude")
+                        plt.plot(digital_estimation_high_level_self_programmed_results_integer, linewidth = 0.25)
+                        plt.savefig(self.path + "/digital_estimation_high_level_self_programmed_integer.pdf")
+                        plt.clf()
+                        plt.xlabel("sample number")
+                        plt.ylabel("signal amplitude")
+                        plt.plot(digital_estimation_high_level_self_programmed_results_float, linewidth = 0.25)
+                        plt.savefig(self.path + "/digital_estimation_high_level_self_programmed_float.pdf")
+                        plt.clf()
+                        plt.xlabel("sample number")
+                        plt.ylabel("signal amplitude")
+                        plt.plot(digital_estimation_results, linewidth = 0.25)
+                        plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
+                        plt.savefig(self.path + "/digital_estimation_system_verilog_&_high_level.pdf")
+                        plt.clf()
+                        plt.xscale("log")
+                        plt.psd(digital_estimation_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T))
+                        plt.psd(digital_estimation_high_level_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T))
+                        plt.savefig(self.path + "/psd_log.pdf")
+                        plt.clf()
+                        # Maybe skip windows, make only 1 bin
+                        # Find signal in psd, calculate SNR
+                        plt.psd(digital_estimation_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T))
+                        plt.psd(digital_estimation_high_level_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T))
+                        plt.savefig(self.path + "/psd_linear.pdf")
+                        plt.clf()
 
-                    system_verilog_simulation_csv_file.close()
-                    high_level_simulation_csv_file.close()
+                        system_verilog_simulation_csv_file.close()
+                        high_level_simulation_csv_file.close()
+                        high_level_simulation_self_programmed_integer_csv_file.close()
+                        high_level_simulation_self_programmed_float_csv_file.close()
         
         with open(self.path + "/digital_estimation_system_verilog_vs_high_level.csv") as digital_estimation_system_verilog_vs_high_level_csv_file:
             digital_estimation_system_verilog_vs_high_level_results: list[float] = list[float]()

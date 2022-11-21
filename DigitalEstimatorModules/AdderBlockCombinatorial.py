@@ -2,7 +2,12 @@ import SystemVerilogModule
 
 
 class AdderBlockCombinatorial(SystemVerilogModule.SystemVerilogModule):
-    content: str = """module AdderBlockCombinatorial #(
+
+    def __init__(self, path: str, name: str):
+        super().__init__(path, name)
+
+    def generate(self):
+        content: str = """module AdderBlockCombinatorial #(
     	parameter INPUT_COUNT = 2,
         parameter INPUT_WIDTH = 1,
         localparam STAGE_COUNT = int'($ceil($clog2(INPUT_COUNT)))
@@ -89,9 +94,5 @@ class AdderBlockCombinatorial(SystemVerilogModule.SystemVerilogModule):
 
 endmodule"""
 
-    def __init__(self, path: str, name: str):
-        super().__init__(path, name)
-
-    def generate(self):
-        self.syntax_generator.single_line_no_linebreak(self.content, indentation = 0)
+        self.syntax_generator.single_line_no_linebreak(content, indentation = 0)
         self.syntax_generator.close()

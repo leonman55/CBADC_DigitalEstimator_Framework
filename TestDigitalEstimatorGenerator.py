@@ -33,3 +33,6 @@ def test_digital_estimator_generator(test_case_number: int, directory: str, bit_
     digital_estimator_generator.configuration_lookahead_length = lookahead_length
     
     digital_estimator_generator.generate()
+    errors: int = digital_estimator_generator.simulate()
+    if errors:
+        pytest.fail()
