@@ -27,6 +27,7 @@ import DigitalEstimatorModules.ClockDivider
 import DigitalEstimatorModules.InputDownsampleAccumulateRegister
 import DigitalEstimatorModules.GrayCounter
 import DigitalEstimatorModules.GrayCodeToBinary
+import DigitalEstimatorModules.LookUpTableCoefficientRegister
 import DigitalEstimatorVerificationModules.AdderCombinatorialAssertions
 import DigitalEstimatorVerificationModules.AdderBlockCombinatorialAssertions
 import DigitalEstimatorVerificationModules.LookUpTableAssertions
@@ -48,7 +49,7 @@ class DigitalEstimatorGenerator():
     configuration_lookahead_length: int = 512
     configuration_fir_data_width: int = 31
     configuration_fir_lut_input_width: int = 4
-    configuration_simulation_length: int = 1000 + configuration_lookback_length + configuration_lookahead_length
+    configuration_simulation_length: int = 1 << 14
     configuration_offset: int = 0.0
     configuration_down_sample_rate: int = 1
     configuration_over_sample_rate: int = 25
@@ -56,6 +57,24 @@ class DigitalEstimatorGenerator():
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = None
 
     def generate(self) -> int:
+        self.high_level_simulation = CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator(
+            self.path,
+            self.configuration_n_number_of_analog_states,
+            self.configuration_m_number_of_digital_states,
+            self.configuration_beta,
+            self.configuration_rho,
+            self.configuration_kappa,
+            self.configuration_eta2,
+            self.configuration_lookback_length,
+            self.configuration_lookahead_length,
+            self.configuration_fir_data_width,
+            size = self.configuration_simulation_length,
+            offset = self.configuration_offset,
+            OSR = self.configuration_over_sample_rate,
+            down_sample_rate = self.configuration_down_sample_rate
+        )
+        self.high_level_simulation.write_control_signal_to_csv_file(self.high_level_simulation.simulate_analog_system())
+
         digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, "DigitalEstimatorTestbench")
         digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = self.configuration_number_of_timesteps_in_clock_cycle
         digital_estimator_testbench.configuration_rho = self.configuration_rho
@@ -69,7 +88,10 @@ class DigitalEstimatorGenerator():
         digital_estimator_testbench.configuration_fir_data_width = self.configuration_fir_data_width
         digital_estimator_testbench.configuration_fir_lut_input_width = self.configuration_fir_lut_input_width
         digital_estimator_testbench.configuration_simulation_length = self.configuration_simulation_length
+        digital_estimator_testbench.configuration_offset = self.configuration_offset
         digital_estimator_testbench.configuration_down_sample_rate = self.configuration_down_sample_rate
+        digital_estimator_testbench.configuration_over_sample_rate = self.configuration_over_sample_rate
+        digital_estimator_testbench.high_level_simulation = self.high_level_simulation
         digital_estimator_testbench.generate()
 
         digital_estimator: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper(self.path, "DigitalEstimator")
@@ -106,8 +128,12 @@ class DigitalEstimatorGenerator():
         gray_counter.generate()
 
         gray_code_to_binary: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.GrayCodeToBinary.GrayCodeToBinary(self.path, "GrayCodeToBinary")
-        gray_code_to_binary.configuration_counter_bit_width = math.ceil(math.log2(float(self.configuration_down_sample_rate * 2.0)))
+        gray_code_to_binary.configuration_bit_width = math.ceil(math.log2(float(self.configuration_down_sample_rate * 2.0)))
         gray_code_to_binary.generate()
+
+        lookup_table_coefficient_register: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableCoefficientRegister.LookUpTableCoefficientRegister(self.path, "LookUpTableCoefficientRegister")
+        lookup_table_coefficient_register.configuration_lookup_table_data_width = self.configuration_fir_data_width
+        lookup_table_coefficient_register.generate()
 
         adder_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderCombinatorialAssertions.AdderCombinatorialAssertions(self.path, "AdderCombinatorialAssertions")
         adder_combinatorial_assertions.configuration_adder_input_width = self.configuration_fir_lut_input_width
@@ -139,25 +165,11 @@ class DigitalEstimatorGenerator():
         options.append("*.sv")
         self.write_xrun_options_file("xrun_options", options)
 
-        self.high_level_simulation = CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator(
-            self.path,
-            self.configuration_n_number_of_analog_states,
-            self.configuration_m_number_of_digital_states,
-            self.configuration_beta,
-            self.configuration_rho,
-            self.configuration_kappa,
-            self.configuration_eta2,
-            self.configuration_lookback_length,
-            self.configuration_lookahead_length,
-            self.configuration_fir_data_width,
-            size = self.configuration_simulation_length,
-            offset = self.configuration_offset,
-            OSR = self.configuration_over_sample_rate
-        )
-        self.high_level_simulation.write_control_signal_to_csv_file(self.high_level_simulation.simulate_analog_system())
-
     def simulate(self) -> int:
-        self.high_level_simulation.simulate_digital_estimator_fir()
+        high_level_fir_simulator =  self.high_level_simulation.simulate_digital_estimator_fir()
+        #self.high_level_simulation.write_digital_estimation_fir_to_csv_file(self.high_level_simulation.simulate_digital_estimator_fir())
+        self.high_level_simulation.write_digital_estimation_fir_to_csv_file(high_level_fir_simulator)
+
         self.high_level_simulation.simulate_fir_filter_self_programmed(number_format = "both")
         #self.high_level_simulation.simulate_fir_filter_self_programmed(number_format = "float")
         #self.high_level_simulation.simulate_fir_filter_self_programmed(number_format = "integer")
@@ -165,8 +177,6 @@ class DigitalEstimatorGenerator():
         #sim_xrun: subprocess.CompletedProcess = subprocess.run(sim_folder + "sim.sh", shell = True)
         #sim_xrun = subprocess.Popen(["./sim.sh"], cwd = self.path, stdout = PIPE, text = True, shell = True)
         sim_xrun = subprocess.Popen(["./sim.sh"], cwd = self.path, text = True, shell = True)
-
-        self.high_level_simulation.write_digital_estimation_fir_to_csv_file(self.high_level_simulation.simulate_digital_estimator_fir())
 
         sim_xrun.wait()
         xrun_return: int = self.check_simulation_log()

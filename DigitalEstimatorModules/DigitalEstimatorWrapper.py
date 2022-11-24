@@ -121,13 +121,14 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     ) (
         input wire rst,
         input wire clk,
+        input wire enable_lookup_table_coefficient_shift_in,
+        input wire [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_coefficient,
         input wire [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input,
-        input wire [LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries,
-        input wire [LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries,
         output logic signal_estimation_valid_out,
         output logic [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output
 );
 
+    logic internal_rst;
     """
         if self.configuration_down_sample_rate > 1:
             content += f"""logic clk_downsample;
@@ -135,17 +136,20 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         content += f"""logic clk_sample_shift_register;
     logic [DOWN_SAMPLE_RATE - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] downsample_accumulate_output;
     logic [TOTAL_LOOKUP_REGISTER_LENGTH - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] sample_shift_register;
+    wire [LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
+    wire [LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
     
+    assign internal_rst = rst | enable_lookup_table_coefficient_shift_in;
     """
         if self.configuration_down_sample_rate > 1:
-            content += f"""assign clk_sample_shift_register = clk_downsample | rst;
+            content += f"""assign clk_sample_shift_register = clk_downsample | internal_rst;
             """
         else:
-            content += f"""assign clk_sample_shift_register = clk | rst;
+            content += f"""assign clk_sample_shift_register = clk | internal_rst;
             """
         content += """
     always_ff @(posedge clk_sample_shift_register) begin
-        if(rst == 1'b1) begin
+        if(internal_rst == 1'b1) begin
             sample_shift_register <= {{(M_NUMBER_DIGITAL_STATES * TOTAL_LOOKUP_REGISTER_LENGTH) - 1{{1'b0}}}};
         end
         else begin
@@ -177,13 +181,27 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     assign signal_estimation_output = adder_block_lookback_result + adder_block_lookahead_result;
 
     
+    LookUpTableCoefficientRegister #(
+            .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH),
+            .LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT(LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT),
+            .LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT(LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT)
+        )
+        lookup_table_coefficient_register (
+            .rst(rst),
+            .clk(clk),
+            .enable_input(enable_lookup_table_coefficient_shift_in),
+            .coefficient_in(lookup_table_coefficient),
+            .lookback_coefficients(lookback_lookup_table_entries),
+            .lookahead_coefficients(lookahead_lookup_table_entries)
+    );
+    
     """
         if self.configuration_down_sample_rate > 1:
             content += f"""ClockDivider #(
             .DOWN_SAMPLE_RATE({self.configuration_down_sample_rate})
         )
         clock_divider (
-            .rst(rst),
+            .rst(internal_rst),
             .clk(clk),
             .clk_downsample(clk_downsample),
             .clock_divider_counter()
@@ -195,7 +213,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .DATA_WIDTH({self.configuration_m_number_of_digital_states})
         )
         input_downsample_accumulate_register (
-            .rst(rst),
+            .rst(internal_rst),
             .clk(clk),
             .in(digital_control_input),
             .out(downsample_accumulate_output)
@@ -207,7 +225,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         lookback_lookup_table_block (
-            .rst(rst),
+            .rst(internal_rst),
             .input_register(lookback_register),
             .lookup_table_entries(lookback_lookup_table_entries),
             .lookup_table_results(lookback_lookup_table_results)
@@ -218,7 +236,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         adder_block_lookback (
-            .rst(rst),
+            .rst(internal_rst),
             .in(lookback_lookup_table_results),
             .out(adder_block_lookback_result)
     );
@@ -229,7 +247,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         lookahead_lookup_table_block (
-            .rst(rst),
+            .rst(internal_rst),
             .input_register(lookahead_register),
             .lookup_table_entries(lookahead_lookup_table_entries),
             .lookup_table_results(lookahead_lookup_table_results)
@@ -240,7 +258,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         adder_block_lookahead (
-            .rst(rst),
+            .rst(internal_rst),
             .in(lookahead_lookup_table_results),
             .out(adder_block_lookahead_result)
     );

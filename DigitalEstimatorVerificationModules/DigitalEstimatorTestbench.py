@@ -30,7 +30,11 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_fir_data_width: int = 64
     configuration_fir_lut_input_width: int = 4
     configuration_simulation_length: int = 2 << 12
+    configuration_offset: float = 0.0
     configuration_down_sample_rate: int = 1
+    configuration_over_sample_rate: int = 25
+
+    high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator
 
     parameter_alu_input_width: dict[str, str] = {"ALU_INPUT_WIDTH": "32"}
     parameter_control_signal_input_width: dict[str, str] = {"CONTROL_SIGNAL_INPUT_WIDTH": str(configuration_m_number_of_digital_states)}
@@ -116,21 +120,23 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         self.syntax_generator.close()"""
 
     def generate(self):
-        high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator(
-            self.path,
-            self.configuration_n_number_of_analog_states,
-            self.configuration_m_number_of_digital_states,
-            self.configuration_beta,
-            self.configuration_rho,
-            self.configuration_kappa,
-            self.configuration_eta2,
-            self.configuration_lookback_length,
-            self.configuration_lookahead_length,
-            self.configuration_fir_data_width,
-            self.configuration_down_sample_rate,
-            size = self.configuration_simulation_length
-        )
-        high_level_simulation.simulate_digital_estimator_fir()
+        #high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator(
+        #    self.path,
+        #    self.configuration_n_number_of_analog_states,
+        #    self.configuration_m_number_of_digital_states,
+        #    self.configuration_beta,
+        #    self.configuration_rho,
+        #    self.configuration_kappa,
+        #    self.configuration_eta2,
+        #    self.configuration_lookback_length,
+        #    self.configuration_lookahead_length,
+        #    self.configuration_fir_data_width,
+        #    self.configuration_down_sample_rate,
+        #    offset = self.configuration_offset,
+        #    OSR = self.configuration_over_sample_rate,
+        #    size = self.configuration_simulation_length
+        #)
+        self.high_level_simulation.simulate_digital_estimator_fir()
 
         content: str = f"""module DigitalEstimatorTestbench #(
     parameter CLOCK_PERIOD = 10,
@@ -141,7 +147,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     parameter M_NUMBER_DIGITAL_STATES = {self.configuration_m_number_of_digital_states},
     parameter LOOKAHEAD_SIZE = {self.configuration_lookahead_length},
     parameter LOOKBACK_SIZE = {self.configuration_lookback_length},
-    parameter TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
+    localparam TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
     parameter OUTPUT_DATA_WIDTH = {self.configuration_fir_data_width},
 
     parameter INPUT_WIDTH = 4
@@ -153,6 +159,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
     logic rst;
     logic clk;
+    logic enable_lookup_table_coefficient_shift_in;
+    logic [OUTPUT_DATA_WIDTH - 1 : 0] lookup_table_coefficient;
     logic [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input;
     //logic [(LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookback_lookup_table_entries;
     logic [LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
@@ -162,11 +170,45 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     wire signal_estimation_valid_out;
 
 
+    initial begin
+        rst = 1'b1;
+        #(2 * CLOCK_PERIOD);
+        rst = 1'b0;
+        #CLOCK_HALF_PERIOD;
+    end
+
     always begin
         clk = 1'b0;
         #CLOCK_HALF_PERIOD;
         clk = 1'b1;
         #CLOCK_HALF_PERIOD;
+    end
+
+    initial begin
+        enable_lookup_table_coefficient_shift_in = 1'b0;
+        lookup_table_coefficient = {OUTPUT_DATA_WIDTH{1'b0}};
+
+        @(negedge rst);
+
+        enable_lookup_table_coefficient_shift_in = 1'b1;
+
+        $info("Starting coefficient shift in.\\n");
+
+        for(integer lookahead_index = LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT - 1; lookahead_index >= 0; lookahead_index--) begin
+        //for(integer lookahead_index = 0; lookahead_index <= LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT - 1; lookahead_index++) begin
+            lookup_table_coefficient = lookahead_lookup_table_entries[lookahead_index];
+            @(negedge clk);
+        end
+        
+        for(integer lookback_index = LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1; lookback_index >= 0; lookback_index--) begin
+        //for(integer lookback_index = 0; lookback_index <= LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1; lookback_index++) begin
+            lookup_table_coefficient = lookback_lookup_table_entries[lookback_index];
+            @(negedge clk);
+        end
+
+        enable_lookup_table_coefficient_shift_in = 1'b0;
+
+        $info("Coefficient shift in finished.\\n");
     end
 
     initial begin
@@ -176,7 +218,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             $finish;
         end
 
-        @(negedge rst);
+        digital_control_input = {N_NUMBER_ANALOG_STATES{1'b0}};
+
+        @(negedge enable_lookup_table_coefficient_shift_in);
         @(posedge clk);
 
         while($fscanf(control_signal_file, "%b,\\n", digital_control_input) > 0) begin
@@ -195,35 +239,30 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             $finish;
         end
 
-        @(negedge rst);
+        @(negedge enable_lookup_table_coefficient_shift_in);
         @(posedge clk);
         @(posedge clk);
 
-        repeat ((DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil(real'(DOWN_SAMPLE_RATE) / 2.0) - 1)) begin
+        repeat((DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil(real'(DOWN_SAMPLE_RATE) / 2.0) - 1)) begin
             @(posedge clk);
         end
 
         forever begin
             //$fwrite(digital_estimation_output_file, "%d, %d, %d\\n", signal_estimation_output, dut_digital_estimator.adder_block_lookback_result, dut_digital_estimator.adder_block_lookahead_result);
-            $fwrite(digital_estimation_output_file, "%f, %f, %f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookback_result) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookahead_result) / (2**(OUTPUT_DATA_WIDTH - 1)));
-            @(posedge clk);
+            $fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookback_result) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookahead_result) / (2**(OUTPUT_DATA_WIDTH - 1)));
+
+            repeat(DOWN_SAMPLE_RATE) begin
+                @(posedge clk);
+            end
         end
     end
 
     initial begin
-        rst = 1'b1;
-        #(2 * CLOCK_PERIOD);
-        rst = 1'b0;
-        #CLOCK_HALF_PERIOD;
-    end
-
-    initial begin
         lookback_lookup_table_entries = """
-        content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n"
+        content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n\t\t"
         content += "lookahead_lookup_table_entries = "
-        content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n"
-        content += f"""
-    end
+        content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n"
+        content += f"""\tend
 
     DigitalEstimator #(
             .N_NUMBER_ANALOG_STATES(N_NUMBER_ANALOG_STATES),
@@ -238,9 +277,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         dut_digital_estimator (
             .rst(rst),
             .clk(clk),
+            .enable_lookup_table_coefficient_shift_in(enable_lookup_table_coefficient_shift_in),
+            .lookup_table_coefficient(lookup_table_coefficient),
             .digital_control_input(digital_control_input),
-            .lookback_lookup_table_entries(lookback_lookup_table_entries),
-            .lookahead_lookup_table_entries(lookahead_lookup_table_entries),
             .signal_estimation_valid_out(signal_estimation_valid_out),
             .signal_estimation_output(signal_estimation_output)
     );

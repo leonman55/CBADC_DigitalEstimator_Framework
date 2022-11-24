@@ -1,6 +1,7 @@
 from math import ceil
 
 import cbadc
+import matplotlib.mlab
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -99,7 +100,7 @@ class DigitalEstimatorParameterGenerator():
             k2: int = 1,
             data_width: int = 64,
             down_sample_rate: int = 1,
-            amplitude: float = 0.5,
+            amplitude: float = 0.7,
             OSR: int = 25,
             phase: float = np.pi / 3.0,
             offset: float = 0.0,
@@ -133,6 +134,7 @@ class DigitalEstimatorParameterGenerator():
             csv_file.close()
 
     def write_digital_estimation_fir_to_csv_file(self, values: np.ndarray):
+        np.set_printoptions(floatmode = "fixed", precision = 18)
         with open(self.path + "/digital_estimation_high_level.csv", "w") as csv_file:
             for single_estimation_value in values:
                 single_estimation_value_string: str = str(single_estimation_value)
@@ -150,6 +152,11 @@ class DigitalEstimatorParameterGenerator():
         np.array([2 * np.pi * BW])
         )) ** 2 )
         return eta2
+
+    def get_input_freq(self, sim_len, n_cycles, fs):
+        samples_per_period = sim_len/n_cycles
+        fi = fs / samples_per_period
+        return fi
 
     def simulate_analog_system(self):
         # Setup the analog System.
@@ -206,6 +213,8 @@ class DigitalEstimatorParameterGenerator():
         #print(digital_control)
 
 
+        length = 1 << 14
+        n_cycles = 1<<5
         # Setup the analog stimulation signal
         # Set the peak amplitude.
         #amplitude = 0.5
@@ -214,7 +223,9 @@ class DigitalEstimatorParameterGenerator():
         #frequency = 1.0 / (T * self.OSR)
         #frequency = self.eta2 / 32.0
         #frequency = 1.0 / (T * 1024)
-        frequency = self.bandwidth / 1000
+        #frequency = self.bandwidth / 128
+        #frequency = 1 / (self.T * 1000)
+        frequency = self.get_input_freq(length, n_cycles, 1 / self.T)
 
         # We also specify a phase an offset these are hovewer optional.
         #phase = np.pi / 3
@@ -233,7 +244,8 @@ class DigitalEstimatorParameterGenerator():
         #size = 1 << 18
         #size = 1 << 12
         #end_time = T * self.size
-        end_time = self.size / self.bandwidth
+        #end_time = (self.size * 2 * self.T * self.OSR) + (self.k1 + self.k2) * self.T
+        end_time = length * self.T
 
         # Instantiate the simulator.
         simulator = cbadc.simulator.get_simulator(
@@ -498,14 +510,16 @@ class DigitalEstimatorParameterGenerator():
         # Instantiate LeapFrog analog_system and digital_control
         analog_frontend = cbadc.synthesis.get_leap_frog(OSR = self.OSR, N = self.n_number_of_analog_states, BW = self.bandwidth)
         eta2 = self.get_eta2(analog_frontend, self.bandwidth)
+        self.eta2 = eta2
         self.T = analog_frontend.digital_control.clock.T
 
         # Instantiate the digital estimator (this is where the filter coefficients are
         # computed).
         #digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 1.0), downsample = self.down_sample_rate)
-        digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_frontend.analog_system, analog_frontend.digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 1.0), downsample = self.down_sample_rate)
         #digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 4.0))
         #digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_system, digital_control, self.eta2, self.k1, self.k2)
+        digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_frontend.analog_system, analog_frontend.digital_control, self.eta2, self.k1, self.k2, fixed_point = cbadc.utilities.FixedPoint(self.data_width, 1.0), downsample = self.down_sample_rate)
+        #digital_estimator_fir: cbadc.digital_estimator.FIRFilter = cbadc.digital_estimator.FIRFilter(analog_frontend.analog_system, analog_frontend.digital_control, self.eta2, self.k1, self.k2, downsample = self.down_sample_rate)
         print("FIR estimator\n\n", digital_estimator_fir, "\n")
         self.fir_h_matrix = digital_estimator_fir.h
         #self.fir_hb_matrix = digital_estimator_fir.h[0 : self.n_number_of_analog_states - 1, 0 : self.k1]
@@ -522,7 +536,12 @@ class DigitalEstimatorParameterGenerator():
         # Set the frequency of the analog simulation signal
         #frequency = 1.0 / (T * self.OSR)
         #frequency = 1.0 / (T * 1024)
-        frequency = self.bandwidth / 1000
+        #frequency = self.bandwidth / 128
+        length = 1 << 14
+        n_cycles = 1<<5
+        frequency = self.get_input_freq(length, n_cycles, 1 / self.T)
+
+        #frequency = 1 / (self.T * 1000)
 
         # Instantiate the analog signal
         analog_signal = cbadc.analog_signal.Sinusoidal(self.amplitude, frequency, self.phase, self.offset)
@@ -533,7 +552,9 @@ class DigitalEstimatorParameterGenerator():
 
         # Setup the simulation time of the system
         #end_time = T * self.size
-        end_time = self.size / self.bandwidth
+        #end_time = self.size * self.T
+        #end_time = (self.size * 2 * self.T * self.OSR) + (self.k1 + self.k2) * self.T
+        end_time = length * self.T
 
         # Instantiate the simulator.
         simulator = cbadc.simulator.get_simulator(
@@ -545,6 +566,7 @@ class DigitalEstimatorParameterGenerator():
             #clock = clock,
             clock = analog_frontend.digital_control.clock,
             t_stop = end_time,
+            
         )
 
         digital_estimator_fir(simulator)
@@ -622,6 +644,8 @@ class DigitalEstimatorParameterGenerator():
                     high_level_simulation_results = high_level_simulation_csv_file.readlines()
 
                     for index in range(len(system_verilog_simulation_results)):
+                        if index >= len(high_level_simulation_results):
+                            break
                         system_verilog_simulation_result = system_verilog_simulation_results[index].rsplit(",")[0]
                         high_level_simulation_result = high_level_simulation_results[index].rsplit(",")[0]
 
@@ -702,14 +726,18 @@ class DigitalEstimatorParameterGenerator():
                         plt.savefig(self.path + "/digital_estimation_system_verilog_&_high_level.pdf")
                         plt.clf()
                         plt.xscale("log")
-                        plt.psd(digital_estimation_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T))
-                        plt.psd(digital_estimation_high_level_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T))
+                        #plt.psd(digital_estimation_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T), window = matplotlib.mlab.window_none)
+                        plt.psd(digital_estimation_results[-(1<<13):], Fs = (1.0 / self.T), window = matplotlib.mlab.window_none, NFFT = 1<<13)
+                        #plt.psd(digital_estimation_high_level_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T), window = matplotlib.mlab.window_none)
+                        plt.psd(digital_estimation_high_level_results[-(1<<13): ], Fs = (1.0 / self.T), window = matplotlib.mlab.window_none, NFFT = 1<<13)
                         plt.savefig(self.path + "/psd_log.pdf")
                         plt.clf()
                         # Maybe skip windows, make only 1 bin
                         # Find signal in psd, calculate SNR
-                        plt.psd(digital_estimation_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T))
-                        plt.psd(digital_estimation_high_level_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T))
+                        #plt.psd(digital_estimation_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T), window = matplotlib.mlab.window_none)
+                        plt.psd(digital_estimation_results[-(1<<13):], Fs = (1.0 / self.T), window = matplotlib.mlab.window_none, NFFT = 1<<13)
+                        #plt.psd(digital_estimation_high_level_results[self.k1 + self.k2 : ], Fs = (1.0 / self.T), window = matplotlib.mlab.window_none)
+                        plt.psd(digital_estimation_high_level_results[-(1<<13): ], Fs = (1.0 / self.T), window = matplotlib.mlab.window_none, NFFT = 1<<13)
                         plt.savefig(self.path + "/psd_linear.pdf")
                         plt.clf()
 
