@@ -33,6 +33,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_offset: float = 0.0
     configuration_down_sample_rate: int = 1
     configuration_over_sample_rate: int = 25
+    configuration_downsample_clock_counter_type: str = "binary"
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator
 
@@ -150,12 +151,12 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     localparam TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
     parameter OUTPUT_DATA_WIDTH = {self.configuration_fir_data_width},
 
-    parameter INPUT_WIDTH = 4
+    parameter INPUT_WIDTH = {self.configuration_fir_lut_input_width},
+
+    localparam LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT = (LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH * (2**INPUT_WIDTH) + (((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH))),
+    localparam LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT = (LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH * (2**INPUT_WIDTH) + (((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)))
 );"""
         content += """
-
-    localparam LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH) + (((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)));
-    localparam LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH)) * (2**INPUT_WIDTH) + (((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)));
 
     logic rst;
     logic clk;
@@ -221,9 +222,19 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         digital_control_input = {N_NUMBER_ANALOG_STATES{1'b0}};
 
         @(negedge enable_lookup_table_coefficient_shift_in);
-        @(posedge clk);
-
-        while($fscanf(control_signal_file, "%b,\\n", digital_control_input) > 0) begin
+        """
+        if self.configuration_down_sample_rate == 1:
+            content += """@(posedge clk);
+        
+        """
+        else:
+            content += """@(posedge dut_digital_estimator.clk_sample_shift_register);
+        repeat(DOWN_SAMPLE_RATE + 1) begin
+            @(posedge clk);
+        end
+        
+        """
+        content += """while($fscanf(control_signal_file, "%b,\\n", digital_control_input) > 0) begin
             @(posedge clk);
         end
 
@@ -240,21 +251,41 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         end
 
         @(negedge enable_lookup_table_coefficient_shift_in);
-        @(posedge clk);
-        @(posedge clk);
-
-        repeat((DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil(real'(DOWN_SAMPLE_RATE) / 2.0) - 1)) begin
+        """
+        if self.configuration_down_sample_rate == 1:
+            content += """repeat(3) begin
             @(posedge clk);
         end
 
+        """
+        else:
+            content += """repeat(4) begin
+            @(negedge dut_digital_estimator.clk_sample_shift_register);
+        end
+        
+        """
+        content += """/*repeat((DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil(real'(DOWN_SAMPLE_RATE) / 2.0) - 1)) begin
+            @(posedge clk);
+        end*/
+
         forever begin
             //$fwrite(digital_estimation_output_file, "%d, %d, %d\\n", signal_estimation_output, dut_digital_estimator.adder_block_lookback_result, dut_digital_estimator.adder_block_lookahead_result);
-            $fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookback_result) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookahead_result) / (2**(OUTPUT_DATA_WIDTH - 1)));
-
-            repeat(DOWN_SAMPLE_RATE) begin
-                @(posedge clk);
-            end
-        end
+            """
+        if self.configuration_fir_data_width < 32:
+            content += """$fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookback_result) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookahead_result) / (2**(OUTPUT_DATA_WIDTH - 1)));
+            """
+        else:
+            content += """$fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)), real'(dut_digital_estimator.adder_block_lookback_result >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)), real'(dut_digital_estimator.adder_block_lookahead_result >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)));
+            """
+        if self.configuration_down_sample_rate == 1:
+            content += """
+            @(posedge clk);
+        """
+        else:
+            content += """
+            @(negedge dut_digital_estimator.clk_sample_shift_register);
+        """
+        content += """end
     end
 
     initial begin
@@ -327,9 +358,54 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             .lookup_table_entries(lookup_table_entries),
             .lookup_table_results(lookup_table_results)
     );
+    
+"""
+        if self.configuration_down_sample_rate > 1:
+            content += """\tbind ClockDivider ClockDividerAssertions #(
+            .DOWN_SAMPLE_RATE(DOWN_SAMPLE_RATE)
+        )
+        clock_divider_bind (
+            .rst(rst),
+            .clk(clk),
+            .clk_downsample(clk_downsample),
+            .edge_counter(edge_counter),
+            .clock_divider_counter(clock_divider_counter)
+    );
 
+    bind InputDownsampleAccumulateRegister InputDownsampleAccumulateRegisterAssertions #(
+            .REGISTER_LENGTH(REGISTER_LENGTH),
+            .DATA_WIDTH(DATA_WIDTH)
+        )
+        input_downsample_accumulate_register_bind (
+            .rst(rst),
+            .clk(clk),
+            .in(in),
+            .out(out)
+    );
+    
+"""
+            if self.configuration_downsample_clock_counter_type == "gray":
+                content += """\tbind GrayCodeToBinary GrayCodeToBinaryAssertions #(
+            .BIT_SIZE(BIT_SIZE)
+        )
+        gray_code_to_binary_bind (
+            .rst(rst),
+            .gray_code(gray_code),
+            .binary(binary)
+    );
 
-endmodule"""
+    bind GrayCounter GrayCounterAssertions #(
+            .BIT_SIZE(BIT_SIZE),
+            .TOP_VALUE(TOP_VALUE)
+        )
+        gray_counter_bind (
+            .rst(rst),
+            .clk(clk),
+            .counter(counter)
+    );
+    
+"""
+        content += "\nendmodule"
 
         self.syntax_generator.single_line_no_linebreak(content, indentation = 0)
         self.syntax_generator.close()

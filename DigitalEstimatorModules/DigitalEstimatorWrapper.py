@@ -16,6 +16,7 @@ import cbadc
 class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     configuration_n_number_of_analog_states: int = 6
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
+    configuration_fir_lut_input_width: int = 4
     configuration_beta: float = 6250.0
     configuration_rho: float = -1e-2
     configuration_kappa: float = -1.0
@@ -24,16 +25,16 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     configuration_lookahead_length: int = 1
     configuration_down_sample_rate: int = 1
 
-    parameter_control_signal_input_width: dict[str, str] = {"CONTROL_SIGNAL_INPUT_WIDTH": str(configuration_m_number_of_digital_states)}
-    parameter_alu_input_width: dict[str, str] = {"ALU_INPUT_WIDTH": "32"}
+    #parameter_control_signal_input_width: dict[str, str] = {"CONTROL_SIGNAL_INPUT_WIDTH": str(configuration_m_number_of_digital_states)}
+    #parameter_alu_input_width: dict[str, str] = {"ALU_INPUT_WIDTH": "32"}
 
-    clk: SystemVerilogPort.SystemVerilogPort = None
-    rst: SystemVerilogPort.SystemVerilogPort = None
-    control_signal_sample_input: SystemVerilogPort.SystemVerilogPort = None
-    signal_estimation_output: SystemVerilogPort.SystemVerilogPort = None
-    filter_coefficient_shift_register_enable: SystemVerilogPort.SystemVerilogPort = None
-    adder_input: list[SystemVerilogPort.SystemVerilogPort] = list[SystemVerilogPort.SystemVerilogPort]()
-    adder_output: SystemVerilogPort.SystemVerilogPort = None
+    #clk: SystemVerilogPort.SystemVerilogPort = None
+    #rst: SystemVerilogPort.SystemVerilogPort = None
+    #control_signal_sample_input: SystemVerilogPort.SystemVerilogPort = None
+    #signal_estimation_output: SystemVerilogPort.SystemVerilogPort = None
+    #filter_coefficient_shift_register_enable: SystemVerilogPort.SystemVerilogPort = None
+    #adder_input: list[SystemVerilogPort.SystemVerilogPort] = list[SystemVerilogPort.SystemVerilogPort]()
+    #adder_output: SystemVerilogPort.SystemVerilogPort = None
 
     def __init__(self, path: str, name: str):
         super().__init__(path, name)
@@ -110,12 +111,14 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         parameter LOOKBACK_SIZE = 37,
         parameter LOOKAHEAD_SIZE = 17,
         localparam TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
-        parameter LOOKUP_TABLE_INPUT_WIDTH = 4,
+        parameter LOOKUP_TABLE_INPUT_WIDTH = {self.configuration_fir_lut_input_width},
         parameter LOOKUP_TABLE_DATA_WIDTH = 1,
-        localparam LOOKBACK_LOOKUP_TABLE_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / LOOKUP_TABLE_INPUT_WIDTH)),
-        localparam LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT = LOOKBACK_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
-        localparam LOOKAHEAD_LOOKUP_TABLE_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / LOOKUP_TABLE_INPUT_WIDTH)),
-        localparam LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT = LOOKAHEAD_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
+        localparam LOOKBACK_LOOKUP_TABLE_COUNT = int'($ceil(real'(LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / real'(LOOKUP_TABLE_INPUT_WIDTH))),
+        localparam LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / LOOKUP_TABLE_INPUT_WIDTH)) * (2**LOOKUP_TABLE_INPUT_WIDTH) + (((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % LOOKUP_TABLE_INPUT_WIDTH) == 0 ? 0 : (2**((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % LOOKUP_TABLE_INPUT_WIDTH))),
+        //localparam LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT = LOOKBACK_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
+        localparam LOOKAHEAD_LOOKUP_TABLE_COUNT = int'($ceil(real'(LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / real'(LOOKUP_TABLE_INPUT_WIDTH))),
+        localparam LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / LOOKUP_TABLE_INPUT_WIDTH)) * (2**LOOKUP_TABLE_INPUT_WIDTH) + (((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % LOOKUP_TABLE_INPUT_WIDTH) == 0 ? 0 : (2**((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % LOOKUP_TABLE_INPUT_WIDTH))),
+        //localparam LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT = LOOKAHEAD_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
         parameter OUTPUT_DATA_WIDTH = 16,
         parameter DOWN_SAMPLE_RATE = {self.configuration_down_sample_rate}
     ) (
@@ -261,6 +264,15 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .rst(internal_rst),
             .in(lookahead_lookup_table_results),
             .out(adder_block_lookahead_result)
+    );
+
+    ValidCounter #(
+            .TOP_VALUE(LOOKBACK_SIZE + LOOKAHEAD_SIZE)
+        )
+        valid_counter (
+            .rst(internal_rst),
+            .clk(clk),
+            .valid(signal_estimation_valid_out)
     );
 
 
