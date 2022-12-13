@@ -34,6 +34,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_down_sample_rate: int = 1
     configuration_over_sample_rate: int = 25
     configuration_downsample_clock_counter_type: str = "binary"
+    configuration_combinatorial_synchronous: str = "combinatorial"
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator
 
@@ -154,7 +155,15 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     parameter INPUT_WIDTH = {self.configuration_fir_lut_input_width},
 
     localparam LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT = (LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH * (2**INPUT_WIDTH) + (((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH))),
-    localparam LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT = (LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH * (2**INPUT_WIDTH) + (((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)))
+    localparam LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT = (LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / INPUT_WIDTH * (2**INPUT_WIDTH) + (((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH) == 0 ? 0 : (2**((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % INPUT_WIDTH)))"""
+        if self.configuration_combinatorial_synchronous == "combinatorial":
+            content += """
+);"""
+        elif self.configuration_combinatorial_synchronous == "synchronous":
+            content += """,
+    
+    localparam LOOKBACK_LUT_COUNT = int'($ceil(real'(LOOKBACK_SIZE) * real'(M_NUMBER_DIGITAL_STATES) / real'(INPUT_WIDTH))),
+    localparam REGISTER_DELAY = 1 + $clog2(LOOKBACK_LUT_COUNT) + 1
 );"""
         content += """
 
@@ -264,11 +273,15 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         end
         
         """
-        content += """/*repeat((DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil(real'(DOWN_SAMPLE_RATE) / 2.0) - 1)) begin
-            @(posedge clk);
-        end*/
 
-        forever begin
+        if self.configuration_combinatorial_synchronous == "synchronous":
+            content += """repeat(REGISTER_DELAY) begin
+            @(negedge dut_digital_estimator.clk_sample_shift_register);
+        end
+        
+        """
+
+        content += """forever begin
             //$fwrite(digital_estimation_output_file, "%d, %d, %d\\n", signal_estimation_output, dut_digital_estimator.adder_block_lookback_result, dut_digital_estimator.adder_block_lookahead_result);
             """
         if self.configuration_fir_data_width < 32:
@@ -316,7 +329,10 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     );
 
 
-    bind AdderCombinatorial AdderCombinatorialAssertions #(
+    """
+        
+        if self.configuration_combinatorial_synchronous == "combinatorial":
+            content += """bind AdderCombinatorial AdderCombinatorialAssertions #(
             .INPUT_WIDTH(INPUT_WIDTH)
         )
         adder_combinatorial_bind (
@@ -360,6 +376,56 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     );
     
 """
+        elif self.configuration_combinatorial_synchronous == "synchronous":
+            content += """bind AdderSynchronous AdderSynchronousAssertions #(
+            .INPUT_WIDTH(INPUT_WIDTH)
+        )
+        adder_synchronous_bind (
+            .rst(rst),
+            .clk(clk),
+            .input_0(input_0),
+            .input_1(input_1),
+            .out(out)
+    );
+
+    bind AdderBlockSynchronous AdderBlockSynchronousAssertions #(
+            .INPUT_COUNT(INPUT_COUNT),
+            .INPUT_WIDTH(INPUT_WIDTH)
+        )
+        adder_block_synchronous_bind (
+            .rst(rst),
+            .clk(clk),
+            .in(in),
+            .out(out)
+    );
+
+    bind LookUpTableSynchronous LookUpTableSynchronousAssertions #(
+            .INPUT_WIDTH(INPUT_WIDTH),
+            .DATA_WIDTH(DATA_WIDTH)
+        )
+        look_up_table_synchronous_bind (
+            .rst(rst),
+            .clk(clk),
+            .in(in),
+            .memory(memory),
+            .out(out)
+    );
+
+    bind LookUpTableBlockSynchronous LookUpTableBlockSynchronousAssertions #(
+            .TOTAL_INPUT_WIDTH(TOTAL_INPUT_WIDTH),
+            .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
+            .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        look_up_table_block_synchronous_bind (
+            .rst(rst),
+            .clk(clk),
+            .input_register(input_register),
+            .lookup_table_entries(lookup_table_entries),
+            .lookup_table_results(lookup_table_results)
+    );
+    
+"""
+
         if self.configuration_down_sample_rate > 1:
             content += """\tbind ClockDivider ClockDividerAssertions #(
             .DOWN_SAMPLE_RATE(DOWN_SAMPLE_RATE)

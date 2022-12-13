@@ -596,3 +596,1071 @@ test_8_1to31_512_4_cases = [
 @pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_8_1to31_512_4_cases)
 def test_8_1to31_512_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
     test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_2_63_64_16to4096_4_cases = [
+        (0, base_folder, 2, 63, 64, 16, 16, 4),
+        (1, base_folder, 2, 63, 64, 32, 32, 4),
+        (2, base_folder, 2, 63, 64, 64, 64, 4),
+        (3, base_folder, 2, 63, 64, 128, 128, 4),
+        (4, base_folder, 2, 63, 64, 256, 256, 4),
+        (5, base_folder, 2, 63, 64, 512, 512, 4),
+        (6, base_folder, 2, 63, 64, 1024, 1024, 4),
+        (7, base_folder, 2, 63, 64, 2048, 2048, 4),
+        (8, base_folder, 2, 63, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_2_63_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_2_63_64_16to4096_4_cases)
+def test_2_63_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_3_24_64_16to4096_4_cases = [
+        (0, base_folder, 3, 24, 64, 16, 16, 4),
+        (1, base_folder, 3, 24, 64, 32, 32, 4),
+        (2, base_folder, 3, 24, 64, 64, 64, 4),
+        (3, base_folder, 3, 24, 64, 128, 128, 4),
+        (4, base_folder, 3, 24, 64, 256, 256, 4),
+        (5, base_folder, 3, 24, 64, 512, 512, 4),
+        (6, base_folder, 3, 24, 64, 1024, 1024, 4),
+        (7, base_folder, 3, 24, 64, 2048, 2048, 4),
+        (8, base_folder, 3, 24, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_3_24_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_3_24_64_16to4096_4_cases)
+def test_3_24_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_4_15_64_16to4096_4_cases = [
+        (0, base_folder, 4, 15, 64, 16, 16, 4),
+        (1, base_folder, 4, 15, 64, 32, 32, 4),
+        (2, base_folder, 4, 15, 64, 64, 64, 4),
+        (3, base_folder, 4, 15, 64, 128, 128, 4),
+        (4, base_folder, 4, 15, 64, 256, 256, 4),
+        (5, base_folder, 4, 15, 64, 512, 512, 4),
+        (6, base_folder, 4, 15, 64, 1024, 1024, 4),
+        (7, base_folder, 4, 15, 64, 2048, 2048, 4),
+        (8, base_folder, 4, 15, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_4_15_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_4_15_64_16to4096_4_cases)
+def test_4_15_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_5_11_64_16to4096_4_cases = [
+        (0, base_folder, 5, 11, 64, 16, 16, 4),
+        (1, base_folder, 5, 11, 64, 32, 32, 4),
+        (2, base_folder, 5, 11, 64, 64, 64, 4),
+        (3, base_folder, 5, 11, 64, 128, 128, 4),
+        (4, base_folder, 5, 11, 64, 256, 256, 4),
+        (5, base_folder, 5, 11, 64, 512, 512, 4),
+        (6, base_folder, 5, 11, 64, 1024, 1024, 4),
+        (7, base_folder, 5, 11, 64, 2048, 2048, 4),
+        (8, base_folder, 5, 11, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_5_11_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_5_11_64_16to4096_4_cases)
+def test_5_11_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_6_9_64_16to4096_4_cases = [
+        (0, base_folder, 6, 9, 64, 16, 16, 4),
+        (1, base_folder, 6, 9, 64, 32, 32, 4),
+        (2, base_folder, 6, 9, 64, 64, 64, 4),
+        (3, base_folder, 6, 9, 64, 128, 128, 4),
+        (4, base_folder, 6, 9, 64, 256, 256, 4),
+        (5, base_folder, 6, 9, 64, 512, 512, 4),
+        (6, base_folder, 6, 9, 64, 1024, 1024, 4),
+        (7, base_folder, 6, 9, 64, 2048, 2048, 4),
+        (8, base_folder, 6, 9, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_6_9_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_6_9_64_16to4096_4_cases)
+def test_6_9_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_7_8_64_16to4096_4_cases = [
+        (0, base_folder, 7, 8, 64, 16, 16, 4),
+        (1, base_folder, 7, 8, 64, 32, 32, 4),
+        (2, base_folder, 7, 8, 64, 64, 64, 4),
+        (3, base_folder, 7, 8, 64, 128, 128, 4),
+        (4, base_folder, 7, 8, 64, 256, 256, 4),
+        (5, base_folder, 7, 8, 64, 512, 512, 4),
+        (6, base_folder, 7, 8, 64, 1024, 1024, 4),
+        (7, base_folder, 7, 8, 64, 2048, 2048, 4),
+        (8, base_folder, 7, 8, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_7_8_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_7_8_64_16to4096_4_cases)
+def test_7_8_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_8_7_64_16to4096_4_cases = [
+        (0, base_folder, 8, 7, 64, 16, 16, 4),
+        (1, base_folder, 8, 7, 64, 32, 32, 4),
+        (2, base_folder, 8, 7, 64, 64, 64, 4),
+        (3, base_folder, 8, 7, 64, 128, 128, 4),
+        (4, base_folder, 8, 7, 64, 256, 256, 4),
+        (5, base_folder, 8, 7, 64, 512, 512, 4),
+        (6, base_folder, 8, 7, 64, 1024, 1024, 4),
+        (7, base_folder, 8, 7, 64, 2048, 2048, 4),
+        (8, base_folder, 8, 7, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_8_7_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_8_7_64_16to4096_4_cases)
+def test_8_7_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_2_63_1to31_256_4_cases = [
+        (0, base_folder, 2, 63, 1, 256, 256, 4),
+        (1, base_folder, 2, 63, 2, 256, 256, 4),
+        (2, base_folder, 2, 63, 3, 256, 256, 4),
+        (3, base_folder, 2, 63, 4, 256, 256, 4),
+        (4, base_folder, 2, 63, 5, 256, 256, 4),
+        (5, base_folder, 2, 63, 6, 256, 256, 4),
+        (6, base_folder, 2, 63, 7, 256, 256, 4),
+        (7, base_folder, 2, 63, 8, 256, 256, 4),
+        (8, base_folder, 2, 63, 9, 256, 256, 4),
+        (9, base_folder, 2, 63, 10, 256, 256, 4),
+        (10, base_folder, 2, 63, 11, 256, 256, 4),
+        (11, base_folder, 2, 63, 12, 256, 256, 4),
+        (12, base_folder, 2, 63, 13, 256, 256, 4),
+        (13, base_folder, 2, 63, 14, 256, 256, 4),
+        (14, base_folder, 2, 63, 15, 256, 256, 4),
+        (15, base_folder, 2, 63, 16, 256, 256, 4),
+        (16, base_folder, 2, 63, 17, 256, 256, 4),
+        (17, base_folder, 2, 63, 18, 256, 256, 4),
+        (18, base_folder, 2, 63, 19, 256, 256, 4),
+        (19, base_folder, 2, 63, 20, 256, 256, 4),
+        (20, base_folder, 2, 63, 21, 256, 256, 4),
+        (21, base_folder, 2, 63, 22, 256, 256, 4),
+        (22, base_folder, 2, 63, 23, 256, 256, 4),
+        (23, base_folder, 2, 63, 24, 256, 256, 4),
+        (24, base_folder, 2, 63, 25, 256, 256, 4),
+        (25, base_folder, 2, 63, 26, 256, 256, 4),
+        (26, base_folder, 2, 63, 27, 256, 256, 4),
+        (27, base_folder, 2, 63, 28, 256, 256, 4),
+        (28, base_folder, 2, 63, 29, 256, 256, 4),
+        (29, base_folder, 2, 63, 30, 256, 256, 4),
+        (30, base_folder, 2, 63, 31, 256, 256, 4)
+    ]
+
+@pytest.mark.test_2_63_1to31_256_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_2_63_1to31_256_4_cases)
+def test_2_63_1to31_256_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_3_24_1to31_256_4_cases = [
+        (0, base_folder, 3, 24, 1, 256, 256, 4),
+        (1, base_folder, 3, 24, 2, 256, 256, 4),
+        (2, base_folder, 3, 24, 3, 256, 256, 4),
+        (3, base_folder, 3, 24, 4, 256, 256, 4),
+        (4, base_folder, 3, 24, 5, 256, 256, 4),
+        (5, base_folder, 3, 24, 6, 256, 256, 4),
+        (6, base_folder, 3, 24, 7, 256, 256, 4),
+        (7, base_folder, 3, 24, 8, 256, 256, 4),
+        (8, base_folder, 3, 24, 9, 256, 256, 4),
+        (9, base_folder, 3, 24, 10, 256, 256, 4),
+        (10, base_folder, 3, 24, 11, 256, 256, 4),
+        (11, base_folder, 3, 24, 12, 256, 256, 4),
+        (12, base_folder, 3, 24, 13, 256, 256, 4),
+        (13, base_folder, 3, 24, 14, 256, 256, 4),
+        (14, base_folder, 3, 24, 15, 256, 256, 4),
+        (15, base_folder, 3, 24, 16, 256, 256, 4),
+        (16, base_folder, 3, 24, 17, 256, 256, 4),
+        (17, base_folder, 3, 24, 18, 256, 256, 4),
+        (18, base_folder, 3, 24, 19, 256, 256, 4),
+        (19, base_folder, 3, 24, 20, 256, 256, 4),
+        (20, base_folder, 3, 24, 21, 256, 256, 4),
+        (21, base_folder, 3, 24, 22, 256, 256, 4),
+        (22, base_folder, 3, 24, 23, 256, 256, 4),
+        (23, base_folder, 3, 24, 24, 256, 256, 4),
+        (24, base_folder, 3, 24, 25, 256, 256, 4),
+        (25, base_folder, 3, 24, 26, 256, 256, 4),
+        (26, base_folder, 3, 24, 27, 256, 256, 4),
+        (27, base_folder, 3, 24, 28, 256, 256, 4),
+        (28, base_folder, 3, 24, 29, 256, 256, 4),
+        (29, base_folder, 3, 24, 30, 256, 256, 4),
+        (30, base_folder, 3, 24, 31, 256, 256, 4)
+    ]
+
+@pytest.mark.test_3_24_1to31_256_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_3_24_1to31_256_4_cases)
+def test_3_24_1to31_256_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_4_15_1to31_256_4_cases = [
+        (0, base_folder, 4, 15, 1, 256, 256, 4),
+        (1, base_folder, 4, 15, 2, 256, 256, 4),
+        (2, base_folder, 4, 15, 3, 256, 256, 4),
+        (3, base_folder, 4, 15, 4, 256, 256, 4),
+        (4, base_folder, 4, 15, 5, 256, 256, 4),
+        (5, base_folder, 4, 15, 6, 256, 256, 4),
+        (6, base_folder, 4, 15, 7, 256, 256, 4),
+        (7, base_folder, 4, 15, 8, 256, 256, 4),
+        (8, base_folder, 4, 15, 9, 256, 256, 4),
+        (9, base_folder, 4, 15, 10, 256, 256, 4),
+        (10, base_folder, 4, 15, 11, 256, 256, 4),
+        (11, base_folder, 4, 15, 12, 256, 256, 4),
+        (12, base_folder, 4, 15, 13, 256, 256, 4),
+        (13, base_folder, 4, 15, 14, 256, 256, 4),
+        (14, base_folder, 4, 15, 15, 256, 256, 4),
+        (15, base_folder, 4, 15, 16, 256, 256, 4),
+        (16, base_folder, 4, 15, 17, 256, 256, 4),
+        (17, base_folder, 4, 15, 18, 256, 256, 4),
+        (18, base_folder, 4, 15, 19, 256, 256, 4),
+        (19, base_folder, 4, 15, 20, 256, 256, 4),
+        (20, base_folder, 4, 15, 21, 256, 256, 4),
+        (21, base_folder, 4, 15, 22, 256, 256, 4),
+        (22, base_folder, 4, 15, 23, 256, 256, 4),
+        (23, base_folder, 4, 15, 24, 256, 256, 4),
+        (24, base_folder, 4, 15, 25, 256, 256, 4),
+        (25, base_folder, 4, 15, 26, 256, 256, 4),
+        (26, base_folder, 4, 15, 27, 256, 256, 4),
+        (27, base_folder, 4, 15, 28, 256, 256, 4),
+        (28, base_folder, 4, 15, 29, 256, 256, 4),
+        (29, base_folder, 4, 15, 30, 256, 256, 4),
+        (30, base_folder, 4, 15, 31, 256, 256, 4)
+    ]
+
+@pytest.mark.test_4_15_1to31_256_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_4_15_1to31_256_4_cases)
+def test_4_15_1to31_256_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_5_11_1to31_256_4_cases = [
+        (0, base_folder, 5, 11, 1, 256, 256, 4),
+        (1, base_folder, 5, 11, 2, 256, 256, 4),
+        (2, base_folder, 5, 11, 3, 256, 256, 4),
+        (3, base_folder, 5, 11, 4, 256, 256, 4),
+        (4, base_folder, 5, 11, 5, 256, 256, 4),
+        (5, base_folder, 5, 11, 6, 256, 256, 4),
+        (6, base_folder, 5, 11, 7, 256, 256, 4),
+        (7, base_folder, 5, 11, 8, 256, 256, 4),
+        (8, base_folder, 5, 11, 9, 256, 256, 4),
+        (9, base_folder, 5, 11, 10, 256, 256, 4),
+        (10, base_folder, 5, 11, 11, 256, 256, 4),
+        (11, base_folder, 5, 11, 12, 256, 256, 4),
+        (12, base_folder, 5, 11, 13, 256, 256, 4),
+        (13, base_folder, 5, 11, 14, 256, 256, 4),
+        (14, base_folder, 5, 11, 15, 256, 256, 4),
+        (15, base_folder, 5, 11, 16, 256, 256, 4),
+        (16, base_folder, 5, 11, 17, 256, 256, 4),
+        (17, base_folder, 5, 11, 18, 256, 256, 4),
+        (18, base_folder, 5, 11, 19, 256, 256, 4),
+        (19, base_folder, 5, 11, 20, 256, 256, 4),
+        (20, base_folder, 5, 11, 21, 256, 256, 4),
+        (21, base_folder, 5, 11, 22, 256, 256, 4),
+        (22, base_folder, 5, 11, 23, 256, 256, 4),
+        (23, base_folder, 5, 11, 24, 256, 256, 4),
+        (24, base_folder, 5, 11, 25, 256, 256, 4),
+        (25, base_folder, 5, 11, 26, 256, 256, 4),
+        (26, base_folder, 5, 11, 27, 256, 256, 4),
+        (27, base_folder, 5, 11, 28, 256, 256, 4),
+        (28, base_folder, 5, 11, 29, 256, 256, 4),
+        (29, base_folder, 5, 11, 30, 256, 256, 4),
+        (30, base_folder, 5, 11, 31, 256, 256, 4)
+    ]
+
+@pytest.mark.test_5_11_1to31_256_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_5_11_1to31_256_4_cases)
+def test_5_11_1to31_256_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_6_9_1to31_256_4_cases = [
+        (0, base_folder, 6, 9, 1, 256, 256, 4),
+        (1, base_folder, 6, 9, 2, 256, 256, 4),
+        (2, base_folder, 6, 9, 3, 256, 256, 4),
+        (3, base_folder, 6, 9, 4, 256, 256, 4),
+        (4, base_folder, 6, 9, 5, 256, 256, 4),
+        (5, base_folder, 6, 9, 6, 256, 256, 4),
+        (6, base_folder, 6, 9, 7, 256, 256, 4),
+        (7, base_folder, 6, 9, 8, 256, 256, 4),
+        (8, base_folder, 6, 9, 9, 256, 256, 4),
+        (9, base_folder, 6, 9, 10, 256, 256, 4),
+        (10, base_folder, 6, 9, 11, 256, 256, 4),
+        (11, base_folder, 6, 9, 12, 256, 256, 4),
+        (12, base_folder, 6, 9, 13, 256, 256, 4),
+        (13, base_folder, 6, 9, 14, 256, 256, 4),
+        (14, base_folder, 6, 9, 15, 256, 256, 4),
+        (15, base_folder, 6, 9, 16, 256, 256, 4),
+        (16, base_folder, 6, 9, 17, 256, 256, 4),
+        (17, base_folder, 6, 9, 18, 256, 256, 4),
+        (18, base_folder, 6, 9, 19, 256, 256, 4),
+        (19, base_folder, 6, 9, 20, 256, 256, 4),
+        (20, base_folder, 6, 9, 21, 256, 256, 4),
+        (21, base_folder, 6, 9, 22, 256, 256, 4),
+        (22, base_folder, 6, 9, 23, 256, 256, 4),
+        (23, base_folder, 6, 9, 24, 256, 256, 4),
+        (24, base_folder, 6, 9, 25, 256, 256, 4),
+        (25, base_folder, 6, 9, 26, 256, 256, 4),
+        (26, base_folder, 6, 9, 27, 256, 256, 4),
+        (27, base_folder, 6, 9, 28, 256, 256, 4),
+        (28, base_folder, 6, 9, 29, 256, 256, 4),
+        (29, base_folder, 6, 9, 30, 256, 256, 4),
+        (30, base_folder, 6, 9, 31, 256, 256, 4)
+    ]
+
+@pytest.mark.test_6_9_1to31_256_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_6_9_1to31_256_4_cases)
+def test_6_9_1to31_256_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_7_8_1to31_256_4_cases = [
+        (0, base_folder, 7, 8, 1, 256, 256, 4),
+        (1, base_folder, 7, 8, 2, 256, 256, 4),
+        (2, base_folder, 7, 8, 3, 256, 256, 4),
+        (3, base_folder, 7, 8, 4, 256, 256, 4),
+        (4, base_folder, 7, 8, 5, 256, 256, 4),
+        (5, base_folder, 7, 8, 6, 256, 256, 4),
+        (6, base_folder, 7, 8, 7, 256, 256, 4),
+        (7, base_folder, 7, 8, 8, 256, 256, 4),
+        (8, base_folder, 7, 8, 9, 256, 256, 4),
+        (9, base_folder, 7, 8, 10, 256, 256, 4),
+        (10, base_folder, 7, 8, 11, 256, 256, 4),
+        (11, base_folder, 7, 8, 12, 256, 256, 4),
+        (12, base_folder, 7, 8, 13, 256, 256, 4),
+        (13, base_folder, 7, 8, 14, 256, 256, 4),
+        (14, base_folder, 7, 8, 15, 256, 256, 4),
+        (15, base_folder, 7, 8, 16, 256, 256, 4),
+        (16, base_folder, 7, 8, 17, 256, 256, 4),
+        (17, base_folder, 7, 8, 18, 256, 256, 4),
+        (18, base_folder, 7, 8, 19, 256, 256, 4),
+        (19, base_folder, 7, 8, 20, 256, 256, 4),
+        (20, base_folder, 7, 8, 21, 256, 256, 4),
+        (21, base_folder, 7, 8, 22, 256, 256, 4),
+        (22, base_folder, 7, 8, 23, 256, 256, 4),
+        (23, base_folder, 7, 8, 24, 256, 256, 4),
+        (24, base_folder, 7, 8, 25, 256, 256, 4),
+        (25, base_folder, 7, 8, 26, 256, 256, 4),
+        (26, base_folder, 7, 8, 27, 256, 256, 4),
+        (27, base_folder, 7, 8, 28, 256, 256, 4),
+        (28, base_folder, 7, 8, 29, 256, 256, 4),
+        (29, base_folder, 7, 8, 30, 256, 256, 4),
+        (30, base_folder, 7, 8, 31, 256, 256, 4)
+    ]
+
+@pytest.mark.test_7_8_1to31_256_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_7_8_1to31_256_4_cases)
+def test_7_8_1to31_256_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_8_7_1to31_256_4_cases = [
+        (0, base_folder, 8, 7, 1, 256, 256, 4),
+        (1, base_folder, 8, 7, 2, 256, 256, 4),
+        (2, base_folder, 8, 7, 3, 256, 256, 4),
+        (3, base_folder, 8, 7, 4, 256, 256, 4),
+        (4, base_folder, 8, 7, 5, 256, 256, 4),
+        (5, base_folder, 8, 7, 6, 256, 256, 4),
+        (6, base_folder, 8, 7, 7, 256, 256, 4),
+        (7, base_folder, 8, 7, 8, 256, 256, 4),
+        (8, base_folder, 8, 7, 9, 256, 256, 4),
+        (9, base_folder, 8, 7, 10, 256, 256, 4),
+        (10, base_folder, 8, 7, 11, 256, 256, 4),
+        (11, base_folder, 8, 7, 12, 256, 256, 4),
+        (12, base_folder, 8, 7, 13, 256, 256, 4),
+        (13, base_folder, 8, 7, 14, 256, 256, 4),
+        (14, base_folder, 8, 7, 15, 256, 256, 4),
+        (15, base_folder, 8, 7, 16, 256, 256, 4),
+        (16, base_folder, 8, 7, 17, 256, 256, 4),
+        (17, base_folder, 8, 7, 18, 256, 256, 4),
+        (18, base_folder, 8, 7, 19, 256, 256, 4),
+        (19, base_folder, 8, 7, 20, 256, 256, 4),
+        (20, base_folder, 8, 7, 21, 256, 256, 4),
+        (21, base_folder, 8, 7, 22, 256, 256, 4),
+        (22, base_folder, 8, 7, 23, 256, 256, 4),
+        (23, base_folder, 8, 7, 24, 256, 256, 4),
+        (24, base_folder, 8, 7, 25, 256, 256, 4),
+        (25, base_folder, 8, 7, 26, 256, 256, 4),
+        (26, base_folder, 8, 7, 27, 256, 256, 4),
+        (27, base_folder, 8, 7, 28, 256, 256, 4),
+        (28, base_folder, 8, 7, 29, 256, 256, 4),
+        (29, base_folder, 8, 7, 30, 256, 256, 4),
+        (30, base_folder, 8, 7, 31, 256, 256, 4)
+    ]
+
+@pytest.mark.test_8_7_1to31_256_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_8_7_1to31_256_4_cases)
+def test_8_7_1to31_256_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_2_32_64_16to4096_4_cases = [
+        (0, base_folder, 2, 32, 64, 16, 16, 4),
+        (1, base_folder, 2, 32, 64, 32, 32, 4),
+        (2, base_folder, 2, 32, 64, 64, 64, 4),
+        (3, base_folder, 2, 32, 64, 128, 128, 4),
+        (4, base_folder, 2, 32, 64, 256, 256, 4),
+        (5, base_folder, 2, 32, 64, 512, 512, 4),
+        (6, base_folder, 2, 32, 64, 1024, 1024, 4),
+        (7, base_folder, 2, 32, 64, 2048, 2048, 4),
+        (8, base_folder, 2, 32, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_2_32_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_2_32_64_16to4096_4_cases)
+def test_2_32_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_3_15_64_16to4096_4_cases = [
+        (0, base_folder, 3, 15, 64, 16, 16, 4),
+        (1, base_folder, 3, 15, 64, 32, 32, 4),
+        (2, base_folder, 3, 15, 64, 64, 64, 4),
+        (3, base_folder, 3, 15, 64, 128, 128, 4),
+        (4, base_folder, 3, 15, 64, 256, 256, 4),
+        (5, base_folder, 3, 15, 64, 512, 512, 4),
+        (6, base_folder, 3, 15, 64, 1024, 1024, 4),
+        (7, base_folder, 3, 15, 64, 2048, 2048, 4),
+        (8, base_folder, 3, 15, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_3_15_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_3_15_64_16to4096_4_cases)
+def test_3_15_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_4_11_64_16to4096_4_cases = [
+        (0, base_folder, 4, 11, 64, 16, 16, 4),
+        (1, base_folder, 4, 11, 64, 32, 32, 4),
+        (2, base_folder, 4, 11, 64, 64, 64, 4),
+        (3, base_folder, 4, 11, 64, 128, 128, 4),
+        (4, base_folder, 4, 11, 64, 256, 256, 4),
+        (5, base_folder, 4, 11, 64, 512, 512, 4),
+        (6, base_folder, 4, 11, 64, 1024, 1024, 4),
+        (7, base_folder, 4, 11, 64, 2048, 2048, 4),
+        (8, base_folder, 4, 11, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_4_11_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_4_11_64_16to4096_4_cases)
+def test_4_11_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_5_9_64_16to4096_4_cases = [
+        (0, base_folder, 5, 9, 64, 16, 16, 4),
+        (1, base_folder, 5, 9, 64, 32, 32, 4),
+        (2, base_folder, 5, 9, 64, 64, 64, 4),
+        (3, base_folder, 5, 9, 64, 128, 128, 4),
+        (4, base_folder, 5, 9, 64, 256, 256, 4),
+        (5, base_folder, 5, 9, 64, 512, 512, 4),
+        (6, base_folder, 5, 9, 64, 1024, 1024, 4),
+        (7, base_folder, 5, 9, 64, 2048, 2048, 4),
+        (8, base_folder, 5, 9, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_5_9_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_5_9_64_16to4096_4_cases)
+def test_5_9_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_6_7_64_16to4096_4_cases = [
+        (0, base_folder, 6, 7, 64, 16, 16, 4),
+        (1, base_folder, 6, 7, 64, 32, 32, 4),
+        (2, base_folder, 6, 7, 64, 64, 64, 4),
+        (3, base_folder, 6, 7, 64, 128, 128, 4),
+        (4, base_folder, 6, 7, 64, 256, 256, 4),
+        (5, base_folder, 6, 7, 64, 512, 512, 4),
+        (6, base_folder, 6, 7, 64, 1024, 1024, 4),
+        (7, base_folder, 6, 7, 64, 2048, 2048, 4),
+        (8, base_folder, 6, 7, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_6_7_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_6_7_64_16to4096_4_cases)
+def test_6_7_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_7_7_64_16to4096_4_cases = [
+        (0, base_folder, 7, 7, 64, 16, 16, 4),
+        (1, base_folder, 7, 7, 64, 32, 32, 4),
+        (2, base_folder, 7, 7, 64, 64, 64, 4),
+        (3, base_folder, 7, 7, 64, 128, 128, 4),
+        (4, base_folder, 7, 7, 64, 256, 256, 4),
+        (5, base_folder, 7, 7, 64, 512, 512, 4),
+        (6, base_folder, 7, 7, 64, 1024, 1024, 4),
+        (7, base_folder, 7, 7, 64, 2048, 2048, 4),
+        (8, base_folder, 7, 7, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_7_7_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_7_7_64_16to4096_4_cases)
+def test_7_7_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_8_6_64_16to4096_4_cases = [
+        (0, base_folder, 8, 6, 64, 16, 16, 4),
+        (1, base_folder, 8, 6, 64, 32, 32, 4),
+        (2, base_folder, 8, 6, 64, 64, 64, 4),
+        (3, base_folder, 8, 6, 64, 128, 128, 4),
+        (4, base_folder, 8, 6, 64, 256, 256, 4),
+        (5, base_folder, 8, 6, 64, 512, 512, 4),
+        (6, base_folder, 8, 6, 64, 1024, 1024, 4),
+        (7, base_folder, 8, 6, 64, 2048, 2048, 4),
+        (8, base_folder, 8, 6, 64, 4096, 4096, 4)
+    ]
+
+@pytest.mark.test_8_6_64_16to4096_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_8_6_64_16to4096_4_cases)
+def test_8_6_64_16to4096_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_2_32_1to31_128_4_cases = [
+        (0, base_folder, 2, 32, 1, 128, 128, 4),
+        (1, base_folder, 2, 32, 2, 128, 128, 4),
+        (2, base_folder, 2, 32, 3, 128, 128, 4),
+        (3, base_folder, 2, 32, 4, 128, 128, 4),
+        (4, base_folder, 2, 32, 5, 128, 128, 4),
+        (5, base_folder, 2, 32, 6, 128, 128, 4),
+        (6, base_folder, 2, 32, 7, 128, 128, 4),
+        (7, base_folder, 2, 32, 8, 128, 128, 4),
+        (8, base_folder, 2, 32, 9, 128, 128, 4),
+        (9, base_folder, 2, 32, 10, 128, 128, 4),
+        (10, base_folder, 2, 32, 11, 128, 128, 4),
+        (11, base_folder, 2, 32, 12, 128, 128, 4),
+        (12, base_folder, 2, 32, 13, 128, 128, 4),
+        (13, base_folder, 2, 32, 14, 128, 128, 4),
+        (14, base_folder, 2, 32, 15, 128, 128, 4),
+        (15, base_folder, 2, 32, 16, 128, 128, 4),
+        (16, base_folder, 2, 32, 17, 128, 128, 4),
+        (17, base_folder, 2, 32, 18, 128, 128, 4),
+        (18, base_folder, 2, 32, 19, 128, 128, 4),
+        (19, base_folder, 2, 32, 20, 128, 128, 4),
+        (20, base_folder, 2, 32, 21, 128, 128, 4),
+        (21, base_folder, 2, 32, 22, 128, 128, 4),
+        (22, base_folder, 2, 32, 23, 128, 128, 4),
+        (23, base_folder, 2, 32, 24, 128, 128, 4),
+        (24, base_folder, 2, 32, 25, 128, 128, 4),
+        (25, base_folder, 2, 32, 26, 128, 128, 4),
+        (26, base_folder, 2, 32, 27, 128, 128, 4),
+        (27, base_folder, 2, 32, 28, 128, 128, 4),
+        (28, base_folder, 2, 32, 29, 128, 128, 4),
+        (29, base_folder, 2, 32, 30, 128, 128, 4),
+        (30, base_folder, 2, 32, 31, 128, 128, 4)
+    ]
+
+@pytest.mark.test_2_32_1to31_128_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_2_32_1to31_128_4_cases)
+def test_2_32_1to31_128_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_3_15_1to31_128_4_cases = [
+        (0, base_folder, 3, 15, 1, 128, 128, 4),
+        (1, base_folder, 3, 15, 2, 128, 128, 4),
+        (2, base_folder, 3, 15, 3, 128, 128, 4),
+        (3, base_folder, 3, 15, 4, 128, 128, 4),
+        (4, base_folder, 3, 15, 5, 128, 128, 4),
+        (5, base_folder, 3, 15, 6, 128, 128, 4),
+        (6, base_folder, 3, 15, 7, 128, 128, 4),
+        (7, base_folder, 3, 15, 8, 128, 128, 4),
+        (8, base_folder, 3, 15, 9, 128, 128, 4),
+        (9, base_folder, 3, 15, 10, 128, 128, 4),
+        (10, base_folder, 3, 15, 11, 128, 128, 4),
+        (11, base_folder, 3, 15, 12, 128, 128, 4),
+        (12, base_folder, 3, 15, 13, 128, 128, 4),
+        (13, base_folder, 3, 15, 14, 128, 128, 4),
+        (14, base_folder, 3, 15, 15, 128, 128, 4),
+        (15, base_folder, 3, 15, 16, 128, 128, 4),
+        (16, base_folder, 3, 15, 17, 128, 128, 4),
+        (17, base_folder, 3, 15, 18, 128, 128, 4),
+        (18, base_folder, 3, 15, 19, 128, 128, 4),
+        (19, base_folder, 3, 15, 20, 128, 128, 4),
+        (20, base_folder, 3, 15, 21, 128, 128, 4),
+        (21, base_folder, 3, 15, 22, 128, 128, 4),
+        (22, base_folder, 3, 15, 23, 128, 128, 4),
+        (23, base_folder, 3, 15, 24, 128, 128, 4),
+        (24, base_folder, 3, 15, 25, 128, 128, 4),
+        (25, base_folder, 3, 15, 26, 128, 128, 4),
+        (26, base_folder, 3, 15, 27, 128, 128, 4),
+        (27, base_folder, 3, 15, 28, 128, 128, 4),
+        (28, base_folder, 3, 15, 29, 128, 128, 4),
+        (29, base_folder, 3, 15, 30, 128, 128, 4),
+        (30, base_folder, 3, 15, 31, 128, 128, 4)
+    ]
+
+@pytest.mark.test_3_15_1to31_128_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_3_15_1to31_128_4_cases)
+def test_3_15_1to31_128_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_4_11_1to31_128_4_cases = [
+        (0, base_folder, 4, 11, 1, 128, 128, 4),
+        (1, base_folder, 4, 11, 2, 128, 128, 4),
+        (2, base_folder, 4, 11, 3, 128, 128, 4),
+        (3, base_folder, 4, 11, 4, 128, 128, 4),
+        (4, base_folder, 4, 11, 5, 128, 128, 4),
+        (5, base_folder, 4, 11, 6, 128, 128, 4),
+        (6, base_folder, 4, 11, 7, 128, 128, 4),
+        (7, base_folder, 4, 11, 8, 128, 128, 4),
+        (8, base_folder, 4, 11, 9, 128, 128, 4),
+        (9, base_folder, 4, 11, 10, 128, 128, 4),
+        (10, base_folder, 4, 11, 11, 128, 128, 4),
+        (11, base_folder, 4, 11, 12, 128, 128, 4),
+        (12, base_folder, 4, 11, 13, 128, 128, 4),
+        (13, base_folder, 4, 11, 14, 128, 128, 4),
+        (14, base_folder, 4, 11, 15, 128, 128, 4),
+        (15, base_folder, 4, 11, 16, 128, 128, 4),
+        (16, base_folder, 4, 11, 17, 128, 128, 4),
+        (17, base_folder, 4, 11, 18, 128, 128, 4),
+        (18, base_folder, 4, 11, 19, 128, 128, 4),
+        (19, base_folder, 4, 11, 20, 128, 128, 4),
+        (20, base_folder, 4, 11, 21, 128, 128, 4),
+        (21, base_folder, 4, 11, 22, 128, 128, 4),
+        (22, base_folder, 4, 11, 23, 128, 128, 4),
+        (23, base_folder, 4, 11, 24, 128, 128, 4),
+        (24, base_folder, 4, 11, 25, 128, 128, 4),
+        (25, base_folder, 4, 11, 26, 128, 128, 4),
+        (26, base_folder, 4, 11, 27, 128, 128, 4),
+        (27, base_folder, 4, 11, 28, 128, 128, 4),
+        (28, base_folder, 4, 11, 29, 128, 128, 4),
+        (29, base_folder, 4, 11, 30, 128, 128, 4),
+        (30, base_folder, 4, 11, 31, 128, 128, 4)
+    ]
+
+@pytest.mark.test_4_11_1to31_128_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_4_11_1to31_128_4_cases)
+def test_4_11_1to31_128_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_5_9_1to31_128_4_cases = [
+        (0, base_folder, 5, 9, 1, 128, 128, 4),
+        (1, base_folder, 5, 9, 2, 128, 128, 4),
+        (2, base_folder, 5, 9, 3, 128, 128, 4),
+        (3, base_folder, 5, 9, 4, 128, 128, 4),
+        (4, base_folder, 5, 9, 5, 128, 128, 4),
+        (5, base_folder, 5, 9, 6, 128, 128, 4),
+        (6, base_folder, 5, 9, 7, 128, 128, 4),
+        (7, base_folder, 5, 9, 8, 128, 128, 4),
+        (8, base_folder, 5, 9, 9, 128, 128, 4),
+        (9, base_folder, 5, 9, 10, 128, 128, 4),
+        (10, base_folder, 5, 9, 11, 128, 128, 4),
+        (11, base_folder, 5, 9, 12, 128, 128, 4),
+        (12, base_folder, 5, 9, 13, 128, 128, 4),
+        (13, base_folder, 5, 9, 14, 128, 128, 4),
+        (14, base_folder, 5, 9, 15, 128, 128, 4),
+        (15, base_folder, 5, 9, 16, 128, 128, 4),
+        (16, base_folder, 5, 9, 17, 128, 128, 4),
+        (17, base_folder, 5, 9, 18, 128, 128, 4),
+        (18, base_folder, 5, 9, 19, 128, 128, 4),
+        (19, base_folder, 5, 9, 20, 128, 128, 4),
+        (20, base_folder, 5, 9, 21, 128, 128, 4),
+        (21, base_folder, 5, 9, 22, 128, 128, 4),
+        (22, base_folder, 5, 9, 23, 128, 128, 4),
+        (23, base_folder, 5, 9, 24, 128, 128, 4),
+        (24, base_folder, 5, 9, 25, 128, 128, 4),
+        (25, base_folder, 5, 9, 26, 128, 128, 4),
+        (26, base_folder, 5, 9, 27, 128, 128, 4),
+        (27, base_folder, 5, 9, 28, 128, 128, 4),
+        (28, base_folder, 5, 9, 29, 128, 128, 4),
+        (29, base_folder, 5, 9, 30, 128, 128, 4),
+        (30, base_folder, 5, 9, 31, 128, 128, 4)
+    ]
+
+@pytest.mark.test_5_9_1to31_128_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_5_9_1to31_128_4_cases)
+def test_5_9_1to31_128_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_6_7_1to31_128_4_cases = [
+        (0, base_folder, 6, 7, 1, 128, 128, 4),
+        (1, base_folder, 6, 7, 2, 128, 128, 4),
+        (2, base_folder, 6, 7, 3, 128, 128, 4),
+        (3, base_folder, 6, 7, 4, 128, 128, 4),
+        (4, base_folder, 6, 7, 5, 128, 128, 4),
+        (5, base_folder, 6, 7, 6, 128, 128, 4),
+        (6, base_folder, 6, 7, 7, 128, 128, 4),
+        (7, base_folder, 6, 7, 8, 128, 128, 4),
+        (8, base_folder, 6, 7, 9, 128, 128, 4),
+        (9, base_folder, 6, 7, 10, 128, 128, 4),
+        (10, base_folder, 6, 7, 11, 128, 128, 4),
+        (11, base_folder, 6, 7, 12, 128, 128, 4),
+        (12, base_folder, 6, 7, 13, 128, 128, 4),
+        (13, base_folder, 6, 7, 14, 128, 128, 4),
+        (14, base_folder, 6, 7, 15, 128, 128, 4),
+        (15, base_folder, 6, 7, 16, 128, 128, 4),
+        (16, base_folder, 6, 7, 17, 128, 128, 4),
+        (17, base_folder, 6, 7, 18, 128, 128, 4),
+        (18, base_folder, 6, 7, 19, 128, 128, 4),
+        (19, base_folder, 6, 7, 20, 128, 128, 4),
+        (20, base_folder, 6, 7, 21, 128, 128, 4),
+        (21, base_folder, 6, 7, 22, 128, 128, 4),
+        (22, base_folder, 6, 7, 23, 128, 128, 4),
+        (23, base_folder, 6, 7, 24, 128, 128, 4),
+        (24, base_folder, 6, 7, 25, 128, 128, 4),
+        (25, base_folder, 6, 7, 26, 128, 128, 4),
+        (26, base_folder, 6, 7, 27, 128, 128, 4),
+        (27, base_folder, 6, 7, 28, 128, 128, 4),
+        (28, base_folder, 6, 7, 29, 128, 128, 4),
+        (29, base_folder, 6, 7, 30, 128, 128, 4),
+        (30, base_folder, 6, 7, 31, 128, 128, 4)
+    ]
+
+@pytest.mark.test_6_7_1to31_128_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_6_7_1to31_128_4_cases)
+def test_6_7_1to31_128_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_7_7_1to31_256_4_cases = [
+        (0, base_folder, 7, 7, 1, 256, 256, 4),
+        (1, base_folder, 7, 7, 2, 256, 256, 4),
+        (2, base_folder, 7, 7, 3, 256, 256, 4),
+        (3, base_folder, 7, 7, 4, 256, 256, 4),
+        (4, base_folder, 7, 7, 5, 256, 256, 4),
+        (5, base_folder, 7, 7, 6, 256, 256, 4),
+        (6, base_folder, 7, 7, 7, 256, 256, 4),
+        (7, base_folder, 7, 7, 8, 256, 256, 4),
+        (8, base_folder, 7, 7, 9, 256, 256, 4),
+        (9, base_folder, 7, 7, 10, 256, 256, 4),
+        (10, base_folder, 7, 7, 11, 256, 256, 4),
+        (11, base_folder, 7, 7, 12, 256, 256, 4),
+        (12, base_folder, 7, 7, 13, 256, 256, 4),
+        (13, base_folder, 7, 7, 14, 256, 256, 4),
+        (14, base_folder, 7, 7, 15, 256, 256, 4),
+        (15, base_folder, 7, 7, 16, 256, 256, 4),
+        (16, base_folder, 7, 7, 17, 256, 256, 4),
+        (17, base_folder, 7, 7, 18, 256, 256, 4),
+        (18, base_folder, 7, 7, 19, 256, 256, 4),
+        (19, base_folder, 7, 7, 20, 256, 256, 4),
+        (20, base_folder, 7, 7, 21, 256, 256, 4),
+        (21, base_folder, 7, 7, 22, 256, 256, 4),
+        (22, base_folder, 7, 7, 23, 256, 256, 4),
+        (23, base_folder, 7, 7, 24, 256, 256, 4),
+        (24, base_folder, 7, 7, 25, 256, 256, 4),
+        (25, base_folder, 7, 7, 26, 256, 256, 4),
+        (26, base_folder, 7, 7, 27, 256, 256, 4),
+        (27, base_folder, 7, 7, 28, 256, 256, 4),
+        (28, base_folder, 7, 7, 29, 256, 256, 4),
+        (29, base_folder, 7, 7, 30, 256, 256, 4),
+        (30, base_folder, 7, 7, 31, 256, 256, 4)
+    ]
+
+@pytest.mark.test_7_7_1to31_256_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_7_7_1to31_256_4_cases)
+def test_7_7_1to31_256_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
+
+
+# Explaination of the parameters
+# Test number
+# Folder to place SystemVerilog files
+# Number of analog states
+# Oversampling rate
+# FIR coefficient bit width
+# lookback length
+# lookahead length
+# LUT input bit width
+test_8_6_1to31_256_4_cases = [
+        (0, base_folder, 8, 6, 1, 256, 256, 4),
+        (1, base_folder, 8, 6, 2, 256, 256, 4),
+        (2, base_folder, 8, 6, 3, 256, 256, 4),
+        (3, base_folder, 8, 6, 4, 256, 256, 4),
+        (4, base_folder, 8, 6, 5, 256, 256, 4),
+        (5, base_folder, 8, 6, 6, 256, 256, 4),
+        (6, base_folder, 8, 6, 7, 256, 256, 4),
+        (7, base_folder, 8, 6, 8, 256, 256, 4),
+        (8, base_folder, 8, 6, 9, 256, 256, 4),
+        (9, base_folder, 8, 6, 10, 256, 256, 4),
+        (10, base_folder, 8, 6, 11, 256, 256, 4),
+        (11, base_folder, 8, 6, 12, 256, 256, 4),
+        (12, base_folder, 8, 6, 13, 256, 256, 4),
+        (13, base_folder, 8, 6, 14, 256, 256, 4),
+        (14, base_folder, 8, 6, 15, 256, 256, 4),
+        (15, base_folder, 8, 6, 16, 256, 256, 4),
+        (16, base_folder, 8, 6, 17, 256, 256, 4),
+        (17, base_folder, 8, 6, 18, 256, 256, 4),
+        (18, base_folder, 8, 6, 19, 256, 256, 4),
+        (19, base_folder, 8, 6, 20, 256, 256, 4),
+        (20, base_folder, 8, 6, 21, 256, 256, 4),
+        (21, base_folder, 8, 6, 22, 256, 256, 4),
+        (22, base_folder, 8, 6, 23, 256, 256, 4),
+        (23, base_folder, 8, 6, 24, 256, 256, 4),
+        (24, base_folder, 8, 6, 25, 256, 256, 4),
+        (25, base_folder, 8, 6, 26, 256, 256, 4),
+        (26, base_folder, 8, 6, 27, 256, 256, 4),
+        (27, base_folder, 8, 6, 28, 256, 256, 4),
+        (28, base_folder, 8, 6, 29, 256, 256, 4),
+        (29, base_folder, 8, 6, 30, 256, 256, 4),
+        (30, base_folder, 8, 6, 31, 256, 256, 4)
+    ]
+
+@pytest.mark.test_8_6_1to31_256_4
+@pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_8_6_1to31_256_4_cases)
+def test_8_6_1to31_256_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)

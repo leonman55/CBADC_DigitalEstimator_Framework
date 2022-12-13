@@ -70,10 +70,10 @@ class ValidCounter(SystemVerilogModule.SystemVerilogModule):
         end
         else begin
             if(counter == (TOP_VALUE ^ (TOP_VALUE >> 1))) begin
-                valid <= 1'b1;
+                valid = 1'b1;
             end
             else begin
-                valid <= 1'b0;
+                valid = 1'b0;
             end
         end
     end

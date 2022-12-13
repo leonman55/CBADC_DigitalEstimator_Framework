@@ -30,10 +30,18 @@ import DigitalEstimatorModules.GrayCounter
 import DigitalEstimatorModules.GrayCodeToBinary
 import DigitalEstimatorModules.LookUpTableCoefficientRegister
 import DigitalEstimatorModules.ValidCounter
+import DigitalEstimatorModules.AdderSynchronous
+import DigitalEstimatorModules.AdderBlockSynchronous
+import DigitalEstimatorModules.LookUpTableSynchronous
+import DigitalEstimatorModules.LookUpTableBlockSynchronous
 import DigitalEstimatorVerificationModules.AdderCombinatorialAssertions
+import DigitalEstimatorVerificationModules.AdderSynchronousAssertions
 import DigitalEstimatorVerificationModules.AdderBlockCombinatorialAssertions
+import DigitalEstimatorVerificationModules.AdderBlockSynchronousAssertions
 import DigitalEstimatorVerificationModules.LookUpTableAssertions
+import DigitalEstimatorVerificationModules.LookUpTableSynchronousAssertions
 import DigitalEstimatorVerificationModules.LookUpTableBlockAssertions
+import DigitalEstimatorVerificationModules.LookUpTableBlockSynchronousAssertions
 import DigitalEstimatorVerificationModules.ClockDividerAssertions
 import DigitalEstimatorVerificationModules.GrayCodeToBinaryAssertions
 import DigitalEstimatorVerificationModules.GrayCounterAssertions
@@ -45,22 +53,23 @@ class DigitalEstimatorGenerator():
     path: str = "../df/sim/SystemVerilogFiles"
 
     configuration_number_of_timesteps_in_clock_cycle: int = 10
-    configuration_n_number_of_analog_states: int = 5
+    configuration_n_number_of_analog_states: int = 2
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
     configuration_beta: float = 10000.0
     configuration_rho: float = -1e-2
     configuration_kappa: float = -1.0
     configuration_eta2: float = 1e7
-    configuration_lookback_length: int = 512
-    configuration_lookahead_length: int = 512
-    configuration_fir_data_width: int = 31
+    configuration_lookback_length: int = 128
+    configuration_lookahead_length: int = 128
+    configuration_fir_data_width: int = 64
     configuration_fir_lut_input_width: int = 4
     configuration_simulation_length: int = 1 << 12
     configuration_offset: int = 0.0
-    configuration_over_sample_rate: int = 17
+    configuration_over_sample_rate: int = 63
     configuration_down_sample_rate: int = configuration_over_sample_rate
     configuration_counter_type: str = "gray"
-    configuration_required_snr_db: float = 85.0
+    configuration_combinatorial_synchronous: str = "synchronous"
+    configuration_required_snr_db: float = 70
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = None
 
@@ -105,28 +114,44 @@ class DigitalEstimatorGenerator():
         digital_estimator_testbench.configuration_over_sample_rate = self.configuration_over_sample_rate
         digital_estimator_testbench.high_level_simulation = self.high_level_simulation
         digital_estimator_testbench.configuration_downsample_clock_counter_type = self.configuration_counter_type
+        digital_estimator_testbench.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
         digital_estimator_testbench.generate()
 
         digital_estimator: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper(self.path, "DigitalEstimator")
         digital_estimator.configuration_n_number_of_analog_states = self.configuration_n_number_of_analog_states
         digital_estimator.configuration_m_number_of_digital_states = self.configuration_m_number_of_digital_states
         digital_estimator.configuration_fir_lut_input_width = self.configuration_fir_lut_input_width
+        digital_estimator.configuration_data_width = self.configuration_fir_data_width
         digital_estimator.configuration_lookback_length = self.configuration_lookback_length
         digital_estimator.configuration_lookahead_length = self.configuration_lookahead_length
         digital_estimator.configuration_down_sample_rate = self.configuration_down_sample_rate
+        digital_estimator.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
         digital_estimator.generate()
 
-        look_up_table: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTable.LookUpTable(self.path, "LookUpTable")
-        look_up_table.generate()
+        if self.configuration_combinatorial_synchronous == "combinatorial":
+            look_up_table: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTable.LookUpTable(self.path, "LookUpTable")
+            look_up_table.generate()
 
-        look_up_table_block: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableBlock.LookUpTableBlock(self.path, "LookUpTableBlock")
-        look_up_table_block.generate()
+            look_up_table_block: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableBlock.LookUpTableBlock(self.path, "LookUpTableBlock")
+            look_up_table_block.generate()
 
-        adder_combinatorial: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderCombinatorial.AdderCombinatorial(self.path, "AdderCombinatorial")
-        adder_combinatorial.generate()
+            adder_combinatorial: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderCombinatorial.AdderCombinatorial(self.path, "AdderCombinatorial")
+            adder_combinatorial.generate()
 
-        adder_block_combinatorial: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderBlockCombinatorial.AdderBlockCombinatorial(self.path, "AdderBlockCombinatorial")
-        adder_block_combinatorial.generate()
+            adder_block_combinatorial: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderBlockCombinatorial.AdderBlockCombinatorial(self.path, "AdderBlockCombinatorial")
+            adder_block_combinatorial.generate()
+        elif self.configuration_combinatorial_synchronous == "synchronous":
+            adder_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderSynchronous.AdderSynchronous(self.path, "AdderSynchronous")
+            adder_synchronous.generate()
+
+            adder_block_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderBlockSynchronous.AdderBlockSynchronous(self.path, "AdderBlockSynchronous")
+            adder_block_synchronous.generate()
+
+            look_up_table_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableSynchronous.LookUpTableSynchronous(self.path, "LookUpTableSynchronous")
+            look_up_table_synchronous.generate()
+
+            look_up_table_block_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableBlockSynchronous.LookUpTableBlockSynchronous(self.path, "LookUpTableBlockSynchronous")
+            look_up_table_block_synchronous.generate()
 
         if self.configuration_down_sample_rate > 1:
             input_downsample_accumulate_register: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.InputDownsampleAccumulateRegister.InputDownsampleAccumulateRegister(self.path, "InputDownsampleAccumulateRegister")
@@ -157,20 +182,36 @@ class DigitalEstimatorGenerator():
         valid_counter.configuration_top_value = self.configuration_lookback_length + self.configuration_lookahead_length
         valid_counter.generate()
 
-        adder_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderCombinatorialAssertions.AdderCombinatorialAssertions(self.path, "AdderCombinatorialAssertions")
-        adder_combinatorial_assertions.configuration_adder_input_width = self.configuration_fir_lut_input_width
-        adder_combinatorial_assertions.generate()
+        if self.configuration_combinatorial_synchronous == "combinatorial":
+            adder_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderCombinatorialAssertions.AdderCombinatorialAssertions(self.path, "AdderCombinatorialAssertions")
+            adder_combinatorial_assertions.configuration_adder_input_width = self.configuration_fir_lut_input_width
+            adder_combinatorial_assertions.generate()
 
-        adder_block_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderBlockCombinatorialAssertions.AdderBlockCombinatorialAssertions(self.path, "AdderBlockCombinatorialAssertions")
-        adder_block_combinatorial_assertions.generate()
+            adder_block_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderBlockCombinatorialAssertions.AdderBlockCombinatorialAssertions(self.path, "AdderBlockCombinatorialAssertions")
+            adder_block_combinatorial_assertions.generate()
 
-        look_up_table_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableAssertions.LookUpTableAssertions(self.path, "LookUpTableAssertions")
-        look_up_table_assertions.configuration_input_width = self.configuration_fir_lut_input_width
-        look_up_table_assertions.configuration_data_width = self.configuration_fir_data_width
-        look_up_table_assertions.generate()
+            look_up_table_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableAssertions.LookUpTableAssertions(self.path, "LookUpTableAssertions")
+            look_up_table_assertions.configuration_input_width = self.configuration_fir_lut_input_width
+            look_up_table_assertions.configuration_data_width = self.configuration_fir_data_width
+            look_up_table_assertions.generate()
 
-        look_up_table_block_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableBlockAssertions.LookUpTableBlockAssertions(self.path, "LookUpTableBlockAssertions")
-        look_up_table_block_assertions.generate()
+            look_up_table_block_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableBlockAssertions.LookUpTableBlockAssertions(self.path, "LookUpTableBlockAssertions")
+            look_up_table_block_assertions.generate()
+        else:
+            adder_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderSynchronousAssertions.AdderSynchronousAssertions(self.path, "AdderSynchronousAssertions")
+            adder_synchronous_assertions.configuration_adder_input_width = self.configuration_fir_lut_input_width
+            adder_synchronous_assertions.generate()
+
+            adder_block_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderBlockSynchronousAssertions.AdderBlockSynchronousAssertions(self.path, "AdderBlockSynchronousAssertions")
+            adder_block_synchronous_assertions.generate()
+
+            look_up_table_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableSynchronousAssertions.LookUpTableSynchronousAssertions(self.path, "LookUpTableSynchronousAssertions")
+            look_up_table_synchronous_assertions.configuration_input_width = self.configuration_fir_lut_input_width
+            look_up_table_synchronous_assertions.configuration_data_width = self.configuration_fir_data_width
+            look_up_table_synchronous_assertions.generate()
+
+            look_up_table_block_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableBlockSynchronousAssertions.LookUpTableBlockSynchronousAssertions(self.path, "LookUpTableBlockSynchronousAssertions")
+            look_up_table_block_synchronous_assertions.generate()
 
         if self.configuration_down_sample_rate > 1:
             input_downsample_accumulate_register_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.InputDownsampleAccumulateRegisterAssertions.InputDownsampleAccumulateRegisterAssertions(self.path, "InputDownsampleAccumulateRegisterAssertions")

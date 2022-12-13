@@ -302,6 +302,8 @@ class DigitalEstimatorParameterGenerator():
         #analog_system = cbadc.analog_system.LeapFrog(beta_vec, alpha_vec, rho_vec, Gamma)
 
         analog_frontend = cbadc.synthesis.get_leap_frog(OSR = self.OSR, N = self.n_number_of_analog_states, BW = self.bandwidth)
+        #analog_frontend = cbadc.synthesis.get_leap_frog(ENOB = 15.2, N = self.n_number_of_analog_states, BW = self.bandwidth)
+        #over_sample_rate = 5e-7 / analog_frontend.digital_control.clock.T
         eta2 = self.get_eta2(analog_frontend, self.bandwidth)
         self.T = analog_frontend.digital_control.clock.T
 
@@ -622,6 +624,7 @@ class DigitalEstimatorParameterGenerator():
         # Set the batch size of lookahead
         #K2 = 1
 
+        # Redo for ENOB = 10 and ENOB = 12
         # Instantiate LeapFrog analog_system and digital_control
         analog_frontend = cbadc.synthesis.get_leap_frog(OSR = self.OSR, N = self.n_number_of_analog_states, BW = self.bandwidth)
         eta2 = self.get_eta2(analog_frontend, self.bandwidth)

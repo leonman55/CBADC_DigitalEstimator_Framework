@@ -17,6 +17,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     configuration_n_number_of_analog_states: int = 6
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
     configuration_fir_lut_input_width: int = 4
+    configuration_data_width: int = 31
     configuration_beta: float = 6250.0
     configuration_rho: float = -1e-2
     configuration_kappa: float = -1.0
@@ -24,6 +25,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     configuration_lookback_length: int = 5
     configuration_lookahead_length: int = 1
     configuration_down_sample_rate: int = 1
+    configuration_combinatorial_synchronous: str = "combinatorial"
 
     #parameter_control_signal_input_width: dict[str, str] = {"CONTROL_SIGNAL_INPUT_WIDTH": str(configuration_m_number_of_digital_states)}
     #parameter_alu_input_width: dict[str, str] = {"ALU_INPUT_WIDTH": "32"}
@@ -108,18 +110,18 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         content: str = f"""module DigitalEstimator #(
         parameter N_NUMBER_ANALOG_STATES = {self.configuration_n_number_of_analog_states},
         parameter M_NUMBER_DIGITAL_STATES = {self.configuration_m_number_of_digital_states},
-        parameter LOOKBACK_SIZE = 37,
-        parameter LOOKAHEAD_SIZE = 17,
+        parameter LOOKBACK_SIZE = {self.configuration_lookback_length},
+        parameter LOOKAHEAD_SIZE = {self.configuration_lookahead_length},
         localparam TOTAL_LOOKUP_REGISTER_LENGTH = LOOKAHEAD_SIZE + LOOKBACK_SIZE,
         parameter LOOKUP_TABLE_INPUT_WIDTH = {self.configuration_fir_lut_input_width},
-        parameter LOOKUP_TABLE_DATA_WIDTH = 1,
+        parameter LOOKUP_TABLE_DATA_WIDTH = {self.configuration_data_width},
         localparam LOOKBACK_LOOKUP_TABLE_COUNT = int'($ceil(real'(LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / real'(LOOKUP_TABLE_INPUT_WIDTH))),
         localparam LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT = int'($ceil((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) / LOOKUP_TABLE_INPUT_WIDTH)) * (2**LOOKUP_TABLE_INPUT_WIDTH) + (((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % LOOKUP_TABLE_INPUT_WIDTH) == 0 ? 0 : (2**((LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES) % LOOKUP_TABLE_INPUT_WIDTH))),
         //localparam LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT = LOOKBACK_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
         localparam LOOKAHEAD_LOOKUP_TABLE_COUNT = int'($ceil(real'(LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / real'(LOOKUP_TABLE_INPUT_WIDTH))),
         localparam LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT = int'($ceil((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) / LOOKUP_TABLE_INPUT_WIDTH)) * (2**LOOKUP_TABLE_INPUT_WIDTH) + (((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % LOOKUP_TABLE_INPUT_WIDTH) == 0 ? 0 : (2**((LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES) % LOOKUP_TABLE_INPUT_WIDTH))),
         //localparam LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT = LOOKAHEAD_LOOKUP_TABLE_COUNT * (2**LOOKUP_TABLE_INPUT_WIDTH),
-        parameter OUTPUT_DATA_WIDTH = 16,
+        parameter OUTPUT_DATA_WIDTH = {self.configuration_data_width},
         parameter DOWN_SAMPLE_RATE = {self.configuration_down_sample_rate}
     ) (
         input wire rst,
@@ -181,10 +183,19 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     wire signed [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] adder_block_lookback_result;
     wire signed [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] adder_block_lookahead_result;
 
-    assign signal_estimation_output = adder_block_lookback_result + adder_block_lookahead_result;
+    """
+        if self.configuration_combinatorial_synchronous == "combinatorial":
+            content += """assign signal_estimation_output = adder_block_lookback_result + adder_block_lookahead_result;"""
+        elif self.configuration_combinatorial_synchronous == "synchronous":
+            content += """always_ff @(posedge clk_sample_shift_register) begin
+        signal_estimation_output = adder_block_lookback_result + adder_block_lookahead_result;
+    end
+    
+    
+    """
 
     
-    LookUpTableCoefficientRegister #(
+        content += """LookUpTableCoefficientRegister #(
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH),
             .LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT(LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT),
             .LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT(LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT)
@@ -201,7 +212,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     """
         if self.configuration_down_sample_rate > 1:
             content += f"""ClockDivider #(
-            .DOWN_SAMPLE_RATE({self.configuration_down_sample_rate})
+            .DOWN_SAMPLE_RATE(DOWN_SAMPLE_RATE)
         )
         clock_divider (
             .rst(internal_rst),
@@ -212,8 +223,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
 
     """
         content += f"""InputDownsampleAccumulateRegister #(
-            .REGISTER_LENGTH({self.configuration_down_sample_rate}),
-            .DATA_WIDTH({self.configuration_m_number_of_digital_states})
+            .REGISTER_LENGTH(DOWN_SAMPLE_RATE),
+            .DATA_WIDTH(M_NUMBER_DIGITAL_STATES)
         )
         input_downsample_accumulate_register (
             .rst(internal_rst),
@@ -222,7 +233,9 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .out(downsample_accumulate_output)
     );
 
-    LookUpTableBlock #(
+    """
+        if self.configuration_combinatorial_synchronous == "combinatorial":
+            content += """LookUpTableBlock #(
             .TOTAL_INPUT_WIDTH(LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES),
             .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
@@ -266,7 +279,59 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .out(adder_block_lookahead_result)
     );
 
-    ValidCounter #(
+    """
+        elif self.configuration_combinatorial_synchronous == "synchronous":
+            content += """LookUpTableBlockSynchronous #(
+            .TOTAL_INPUT_WIDTH(LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES),
+            .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
+            .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        lookback_lookup_table_block (
+            .rst(internal_rst),
+            .clk(clk_downsample | internal_rst),
+            .input_register(lookback_register),
+            .lookup_table_entries(lookback_lookup_table_entries),
+            .lookup_table_results(lookback_lookup_table_results)
+    );
+
+    AdderBlockSynchronous #(
+            .INPUT_COUNT(LOOKBACK_LOOKUP_TABLE_COUNT),
+            .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        adder_block_lookback (
+            .rst(internal_rst),
+            .clk(clk_downsample | internal_rst),
+            .in(lookback_lookup_table_results),
+            .out(adder_block_lookback_result)
+    );
+
+    LookUpTableBlockSynchronous #(
+            .TOTAL_INPUT_WIDTH(LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES),
+            .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
+            .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        lookahead_lookup_table_block (
+            .rst(internal_rst),
+            .clk(clk_downsample | internal_rst),
+            .input_register(lookahead_register),
+            .lookup_table_entries(lookahead_lookup_table_entries),
+            .lookup_table_results(lookahead_lookup_table_results)
+    );
+
+    AdderBlockSynchronous #(
+            .INPUT_COUNT(LOOKAHEAD_LOOKUP_TABLE_COUNT),
+            .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
+        )
+        adder_block_lookahead (
+            .rst(internal_rst),
+            .clk(clk_downsample | internal_rst),
+            .in(lookahead_lookup_table_results),
+            .out(adder_block_lookahead_result)
+    );
+    
+    """
+
+        content += """ValidCounter #(
             .TOP_VALUE(LOOKBACK_SIZE + LOOKAHEAD_SIZE)
         )
         valid_counter (
