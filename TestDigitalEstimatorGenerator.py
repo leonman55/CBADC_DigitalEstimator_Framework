@@ -4,6 +4,7 @@ from pathlib import Path
 import DigitalEstimatorGenerator
 
 
+# Base folder for the generation of the test cases.
 base_folder: str = "/df/sim/TestCase"
 
 
@@ -17,6 +18,27 @@ base_folder: str = "/df/sim/TestCase"
 # lookahead length
 # LUT input bit width
 def test_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+    """Method for executing the test cases.
+
+    Parameters
+    ----------
+    test_case_number: int
+        Used to number the test cases
+    directory: str
+        The directory for the specific test case
+    n_number_of_analog_states: int
+        Number N of analog states in the test case
+    oversampling_rate: int
+        Oversampling rate of the digital control unit
+    bit_width: int
+        Bit width of the filter coefficients
+    lookback_length: int
+        Lookback batch size
+    lookahead_length: int
+        Lookahead batch size
+    lut_input_width: int
+        Select input width of the LUT tables
+    """
     current_working_directory = Path.cwd()
     directory = str(current_working_directory.parent) + directory + "_" + str(n_number_of_analog_states) + "_" + str(oversampling_rate) + "_" + str(bit_width) + "_" + str(lookback_length) + "_" + str(lookahead_length) + "_" + str(lut_input_width)
     Path(directory).mkdir(parents = True, exist_ok = True)

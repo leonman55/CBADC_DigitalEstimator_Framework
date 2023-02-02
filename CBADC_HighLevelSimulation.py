@@ -7,6 +7,14 @@ import numpy as np
 
 
 def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lut_input_width: int) -> np.ndarray:
+    """Converts the FIR coefficient matrix given by the cbadc Python package
+        into the LUT entries.
+
+    The cbadc package creates the coefficients for the single elements of
+        the digital control vectors. When using a FIR filter with LUTs,
+        the LUTs can have an input width greater than 1. This leads to the
+        need of combined coefficients.
+    """
     total_number_of_elements: int = 1
     for dimension_index in range(len(coefficient_matrix.shape)):
         total_number_of_elements *= coefficient_matrix.shape[dimension_index]
@@ -42,132 +50,209 @@ def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lu
 
 
 def plot_results(path: str = "../df/sim/SystemVerilogFiles", k1: int = 512, k2: int = 512, size: int = 1 << 14, T: float = 2.0e-8, OSR: int = 1, down_sample_rate: int = 1):
-    with open(path + "/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
+    """Plots the results of the cbadc Python package simulation and the RTL simulation.
+    
+    This function plots the following graphs:
+        The cbadc high level estimation.
+        The RTL estimation.
+        cbadc and RTL estimation combined.
+        The difference between the cbadc and RTL estimation.
+        The PSD graphs of the cbadc and RTL estimations.
+    Additionally the SNR of the RTL estimation will be calculated from the PSD.
+    """
+    digital_estimation_results: list[float] = list[float]()
+    try:
+        with open(path + "/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
+            for line in system_verilog_simulation_csv_file.readlines():
+                digital_estimation_results.append(float(line.rsplit(",")[0]))
+            system_verilog_simulation_csv_file.close()
+            plt.xlabel("sample number")
+            plt.ylabel("signal amplitude")
+            plt.plot(digital_estimation_results, linewidth = 0.25)
+            plt.savefig(path + "/digital_estimation.pdf")
+            plt.clf()
+    except:
+        print("No RTL simulation results available!")
+    digital_estimation_high_level_results: list[float] = list[float]()
+    try:
         with open(path + "/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
-            with open(path + "/digital_estimation_high_level_self_programmed_integer.csv", "r") as high_level_simulation_self_programmed_integer_csv_file:
-                with open(path + "/digital_estimation_high_level_self_programmed_float.csv", "r") as high_level_simulation_self_programmed_float_csv_file:
-                    with open(path + "/digital_estimation_snr_db.csv", "w") as digital_estimation_snr_db_csv_file:
-                        digital_estimation_results: list[float] = list[float]()
-                        for line in system_verilog_simulation_csv_file.readlines():
-                            digital_estimation_results.append(float(line.rsplit(",")[0]))
-                        digital_estimation_high_level_results: list[float] = list[float]()
-                        for line in high_level_simulation_csv_file.readlines():
-                            digital_estimation_high_level_results.append(float(line.rsplit(",")[0]))
-                        digital_estimation_high_level_self_programmed_results_integer: list[int] = list[int]()
-                        for line in high_level_simulation_self_programmed_integer_csv_file.readlines():
-                            digital_estimation_high_level_self_programmed_results_integer.append(float(line.rsplit(",")[0]))
-                        digital_estimation_high_level_self_programmed_results_float: list[float] = list[float]()
-                        for line in high_level_simulation_self_programmed_float_csv_file.readlines():
-                            digital_estimation_high_level_self_programmed_results_float.append(float(line.rsplit(",")[0]))
-                        plt.xlabel("sample number")
-                        plt.ylabel("signal amplitude")
-                        plt.plot(digital_estimation_results, linewidth = 0.25)
-                        plt.savefig(path + "/digital_estimation.pdf")
-                        plt.clf()
-                        plt.xlabel("sample number")
-                        plt.ylabel("signal amplitude")
-                        plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
-                        plt.savefig(path + "/digital_estimation_high_level.pdf")
-                        plt.clf()
-                        plt.xlabel("sample number")
-                        plt.ylabel("signal amplitude")
-                        plt.plot(digital_estimation_high_level_self_programmed_results_integer, linewidth = 0.25)
-                        plt.savefig(path + "/digital_estimation_high_level_self_programmed_integer.pdf")
-                        plt.clf()
-                        plt.xlabel("sample number")
-                        plt.ylabel("signal amplitude")
-                        plt.plot(digital_estimation_high_level_self_programmed_results_float, linewidth = 0.25)
-                        plt.savefig(path + "/digital_estimation_high_level_self_programmed_float.pdf")
-                        plt.clf()
-                        plt.xlabel("sample number")
-                        plt.ylabel("signal amplitude")
-                        plt.plot(digital_estimation_results, linewidth = 0.25)
-                        plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
-                        plt.savefig(path + "/digital_estimation_system_verilog_&_high_level.pdf")
-                        plt.clf()
-
-                        """digital_estimation_fft = np.fft.rfft(digital_estimation_results[-(size >> 1) : ], n = size >> 1)
-                        plt.xscale("log")
-                        plt.plot(digital_estimation_fft.real)
-                        plt.plot(digital_estimation_fft.imag)
-                        plt.savefig(path + "/digital_estimation_fft.pdf")
-                        plt.clf()
-                        digital_estimation_fft_abs = np.sqrt(digital_estimation_fft.real ** 2 + digital_estimation_fft.imag ** 2)
-                        plt.xscale("log")
-                        plt.plot(digital_estimation_fft_abs)
-                        plt.savefig(path + "/digital_estimation_fft_abs.pdf")
-                        plt.clf()
-                        digital_estimation_fft_abs_dB = 20 * np.log10(digital_estimation_fft_abs)
-                        plt.xscale("log")
-                        plt.plot(digital_estimation_fft_abs_dB)
-                        plt.savefig(path + "/digital_estimation_fft_abs_dB.pdf")
-                        plt.clf()
-                        maximum = np.max(digital_estimation_fft_abs)
-                        print(maximum)
-                        maximum_index = np.where(digital_estimation_fft_abs == maximum)
-                        print(maximum_index[0][0])
-                        noise = digital_estimation_fft_abs[np.where(digital_estimation_fft_abs != maximum)]
-                        noise_sum = np.sum(np.abs(noise))
-                        snr = maximum / noise_sum
-                        snr_dB = 20 * np.log10(snr)
-                        print(snr, "\tdB: ", snr_dB)
-                        digital_estimation_fft_abs_psd = digital_estimation_fft_abs**2
-                        plt.xscale("log")
-                        plt.plot(digital_estimation_fft_abs_psd)
-                        plt.savefig(path + "/digital_estimation_fft_abs_psd.pdf")
-                        plt.clf()"""
-
-                        plt.xscale("log")
-                        #plt.psd(digital_estimation_results[k1 + k2 : ], Fs = (1.0 / T), window = matplotlib.mlab.window_none)
-                        digital_estimation_results_psd = plt.psd(digital_estimation_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
-                        maximum = np.max(digital_estimation_results_psd[0])
-                        noise = digital_estimation_results_psd[0][np.where(digital_estimation_results_psd[0] != maximum)]
-                        noise_sum = np.sum(noise)
-                        snr = maximum / noise_sum
-                        snr_dB = 10 * np.log10(snr)
-                        print("\tSNR dB: ", snr_dB)
-                        digital_estimation_snr_db_csv_file.write(str(snr_dB))
-                        #plt.psd(digital_estimation_high_level_results[k1 + k2 : ], Fs = (1.0 / T), window = matplotlib.mlab.window_none)
-                        plt.psd(digital_estimation_high_level_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
-                        plt.savefig(path + "/psd_log.pdf")
-                        plt.clf()
-                        # Maybe skip windows, make only 1 bin
-                        # Find signal in psd, calculate SNR
-                        #plt.psd(digital_estimation_results[k1 + k2 : ], Fs = (1.0 / T), window = matplotlib.mlab.window_none)
-                        plt.psd(digital_estimation_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
-                        #plt.psd(digital_estimation_high_level_results[k1 + k2 : ], Fs = (1.0 / T), window = matplotlib.mlab.window_none)
-                        plt.psd(digital_estimation_high_level_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
-                        plt.savefig(path + "/psd_linear.pdf")
-                        plt.clf()
-
-                        system_verilog_simulation_csv_file.close()
-                        high_level_simulation_csv_file.close()
-                        high_level_simulation_self_programmed_integer_csv_file.close()
-                        high_level_simulation_self_programmed_float_csv_file.close()
-                        digital_estimation_snr_db_csv_file.close()
-
-
-    with open(path + "/digital_estimation_system_verilog_vs_high_level.csv") as digital_estimation_system_verilog_vs_high_level_csv_file:
-        digital_estimation_system_verilog_vs_high_level_results: list[float] = list[float]()
-        for line in digital_estimation_system_verilog_vs_high_level_csv_file.readlines():
-            digital_estimation_system_verilog_vs_high_level_results.append(float(line.rsplit(",")[0]))
+            for line in high_level_simulation_csv_file.readlines():
+                digital_estimation_high_level_results.append(float(line.rsplit(",")[0]))
+            high_level_simulation_csv_file.close()
+            plt.xlabel("sample number")
+            plt.ylabel("signal amplitude")
+            plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
+            plt.savefig(path + "/digital_estimation_high_level.pdf")
+            plt.clf()
+    except:
+        print("No cbadc Python simulation results available!")
+    if len(digital_estimation_results) != 0 and len(digital_estimation_high_level_results) != 0:
         plt.xlabel("sample number")
-        plt.ylabel("signal difference")
-        plt.plot(digital_estimation_system_verilog_vs_high_level_results, linewidth = 0.25)
-        plt.savefig(path + "/digital_estimation_system_verilog_vs_high_level.pdf")
+        plt.ylabel("signal amplitude")
+        plt.plot(digital_estimation_results, linewidth = 0.25)
+        plt.plot(digital_estimation_high_level_results, linewidth = 0.25)
+        plt.savefig(path + "/digital_estimation_system_verilog_&_high_level.pdf")
         plt.clf()
+    try:
+        with open(path + "/digital_estimation_high_level_self_programmed_integer.csv", "r") as high_level_simulation_self_programmed_integer_csv_file:
+            digital_estimation_high_level_self_programmed_results_integer: list[int] = list[int]()
+            for line in high_level_simulation_self_programmed_integer_csv_file.readlines():
+                digital_estimation_high_level_self_programmed_results_integer.append(float(line.rsplit(",")[0]))
+            high_level_simulation_self_programmed_integer_csv_file.close()
+            plt.xlabel("sample number")
+            plt.ylabel("signal amplitude")
+            plt.plot(digital_estimation_high_level_self_programmed_results_integer, linewidth = 0.25)
+            plt.savefig(path + "/digital_estimation_high_level_self_programmed_integer.pdf")
+            plt.clf()
+    except:
+        pass
+    try:
+        with open(path + "/digital_estimation_high_level_self_programmed_float.csv", "r") as high_level_simulation_self_programmed_float_csv_file:
+            digital_estimation_high_level_self_programmed_results_float: list[float] = list[float]()
+            for line in high_level_simulation_self_programmed_float_csv_file.readlines():
+                digital_estimation_high_level_self_programmed_results_float.append(float(line.rsplit(",")[0]))
+            high_level_simulation_self_programmed_float_csv_file.close()
+            plt.xlabel("sample number")
+            plt.ylabel("signal amplitude")
+            plt.plot(digital_estimation_high_level_self_programmed_results_float, linewidth = 0.25)
+            plt.savefig(path + "/digital_estimation_high_level_self_programmed_float.pdf")
+            plt.clf()
+    except:
+        pass
+    try:
+        with open(path + "/digital_estimation_snr_db.csv", "w") as digital_estimation_snr_db_csv_file:
+            """digital_estimation_fft = np.fft.rfft(digital_estimation_results[-(size >> 1) : ], n = size >> 1)
+            plt.xscale("log")
+            plt.plot(digital_estimation_fft.real)
+            plt.plot(digital_estimation_fft.imag)
+            plt.savefig(path + "/digital_estimation_fft.pdf")
+            plt.clf()
+            digital_estimation_fft_abs = np.sqrt(digital_estimation_fft.real ** 2 + digital_estimation_fft.imag ** 2)
+            plt.xscale("log")
+            plt.plot(digital_estimation_fft_abs)
+            plt.savefig(path + "/digital_estimation_fft_abs.pdf")
+            plt.clf()
+            digital_estimation_fft_abs_dB = 20 * np.log10(digital_estimation_fft_abs)
+            plt.xscale("log")
+            plt.plot(digital_estimation_fft_abs_dB)
+            plt.savefig(path + "/digital_estimation_fft_abs_dB.pdf")
+            plt.clf()
+            maximum = np.max(digital_estimation_fft_abs)
+            print(maximum)
+            maximum_index = np.where(digital_estimation_fft_abs == maximum)
+            print(maximum_index[0][0])
+            noise = digital_estimation_fft_abs[np.where(digital_estimation_fft_abs != maximum)]
+            noise_sum = np.sum(np.abs(noise))
+            snr = maximum / noise_sum
+            snr_dB = 20 * np.log10(snr)
+            print(snr, "\tdB: ", snr_dB)
+            digital_estimation_fft_abs_psd = digital_estimation_fft_abs**2
+            plt.xscale("log")
+            plt.plot(digital_estimation_fft_abs_psd)
+            plt.savefig(path + "/digital_estimation_fft_abs_psd.pdf")
+            plt.clf()"""
+
+            plt.xscale("log")
+            #plt.psd(digital_estimation_results[k1 + k2 : ], Fs = (1.0 / T), window = matplotlib.mlab.window_none)
+            digital_estimation_results_psd = plt.psd(digital_estimation_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
+            maximum = np.max(digital_estimation_results_psd[0])
+            noise = digital_estimation_results_psd[0][np.where(digital_estimation_results_psd[0] != maximum)]
+            noise_sum = np.sum(noise)
+            snr = maximum / noise_sum
+            snr_dB = 10 * np.log10(snr)
+            print("\tSNR dB: ", snr_dB)
+            digital_estimation_snr_db_csv_file.write(str(snr_dB))
+            digital_estimation_snr_db_csv_file.close()
+            #plt.psd(digital_estimation_high_level_results[k1 + k2 : ], Fs = (1.0 / T), window = matplotlib.mlab.window_none)
+            plt.psd(digital_estimation_high_level_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
+            plt.savefig(path + "/psd_log.pdf")
+            plt.clf()
+            # Maybe skip windows, make only 1 bin
+            # Find signal in psd, calculate SNR
+            #plt.psd(digital_estimation_results[k1 + k2 : ], Fs = (1.0 / T), window = matplotlib.mlab.window_none)
+            plt.psd(digital_estimation_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
+            #plt.psd(digital_estimation_high_level_results[k1 + k2 : ], Fs = (1.0 / T), window = matplotlib.mlab.window_none)
+            plt.psd(digital_estimation_high_level_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
+            plt.savefig(path + "/psd_linear.pdf")
+            plt.clf()
+    except:
+        print("No RTL simulation PSD information available!")
+    try:
+        with open(path + "/digital_estimation_system_verilog_vs_high_level.csv") as digital_estimation_system_verilog_vs_high_level_csv_file:
+            digital_estimation_system_verilog_vs_high_level_results: list[float] = list[float]()
+            for line in digital_estimation_system_verilog_vs_high_level_csv_file.readlines():
+                digital_estimation_system_verilog_vs_high_level_results.append(float(line.rsplit(",")[0]))
+            plt.xlabel("sample number")
+            plt.ylabel("signal difference")
+            plt.plot(digital_estimation_system_verilog_vs_high_level_results, linewidth = 0.25)
+            plt.savefig(path + "/digital_estimation_system_verilog_vs_high_level.pdf")
+            plt.clf()
+    except:
+        pass
 
 
 class DigitalEstimatorParameterGenerator():
+    """This class is used to instantiate simulators from the cbadc python package,
+        create the wanted input stimuli, calculate the filter parameters and
+        plot the results to files.
+
+    First the class should be parametrized according to the wanted system
+        specifications and the wanted input stimuli for the simulation.
+    Then the class can be used to simulate the analog system and generate
+        a sequence of digital control vectors for digital estimation simulation.
+    Furthermore the digital estimator coefficients can be generated.
+    Also the digital estimator simulation is done with this class.
+    After the simulations are done, the results can be plotted to files.
+
+    Attributes
+    ----------
+        path: str
+            The path, where the simulation outputs and plots are saved
+        n_number_of_analog_states: int
+            The number N of analog states of the analog system
+        m_number_of_digital_states: int
+            The number M of digital states of the digital control
+        eta2: float
+            -
+        k1: int
+            Lookback batch size.
+        k2: int
+            Lookahead batch size.
+        data_width: int
+            Data width of the filter coefficients, the LUTs, adders, etc.
+        down_sample_rate: int
+            Downsample rate of the digital estimator.
+        T: float
+            Sampling time of the digital control module. Calculated from the
+                chosen bandwidth and the oversampling rate.
+        amplitude: float
+            Amplitude of the input signal.
+        OSR: int
+            The oversampling rate of the digital control unit.
+        phase: float
+            Phase of the chosen input signal.
+        offset: float
+            Offset of the chosen input signal
+        size: int
+            Size/length of the input stimulation signal.
+        bandwidth: float = 1e6
+            The bandwidth of the analog system
+        fir_h_matrix: np.ndarray
+            The FIR coefficient matrix as returned by the cbadc simulator
+        fir_hb_matrix: np.ndarray
+            The lookback part of the coefficient matrix
+        fir_hf_matrix: np.ndarray
+            The lookahead part of the coefficient matrix
+    """
     path: str = "../df/sim/SystemVerilogFiles"
     # Set the number of analog states
     n_number_of_analog_states: int = 6
     # Set the number of digital states
     m_number_of_digital_states: int = n_number_of_analog_states
     # Set the amplification factor
-    beta: float = 6250.0
-    rho: float = -1e-2
-    kappa: float = -1.0
+    #beta: float = 6250.0
+    #rho: float = -1e-2
+    #kappa: float = -1.0
     eta2 = 1e7
     # Set the batch size of lookback
     #K1 = sequence_length
@@ -206,9 +291,9 @@ class DigitalEstimatorParameterGenerator():
             path: str = "../df/sim/SystemVerilogFiles",
             n_number_of_analog_states: int = 6,
             m_number_of_digital_states: int = n_number_of_analog_states,
-            beta: float = 6250.0,
-            rho: float = -1e-2,
-            kappa: float = -1.0,
+            #beta: float = 6250.0,
+            #rho: float = -1e-2,
+            #kappa: float = -1.0,
             eta2: float = 1e7,
             k1: int = 5,
             k2: int = 1,
@@ -223,9 +308,9 @@ class DigitalEstimatorParameterGenerator():
         self.path = path
         self.n_number_of_analog_states = n_number_of_analog_states
         self.m_number_of_digital_states = m_number_of_digital_states
-        self.beta = beta
-        self.rho = rho
-        self.kappa = kappa
+        #self.beta = beta
+        #self.rho = rho
+        #self.kappa = kappa
         self.eta2 = eta2
         self.k1 = k1
         self.k2 = k2
@@ -239,6 +324,8 @@ class DigitalEstimatorParameterGenerator():
         self.bandwidth = bandwidth
 
     def write_control_signal_to_csv_file(self, values: np.ndarray):
+        """Writes the digital control vector stream to a file
+        """
         with open(self.path + "/control_signal.csv", "w") as csv_file:
             for single_control_signal in values:
                 single_control_signal_string: str = ""
@@ -248,6 +335,8 @@ class DigitalEstimatorParameterGenerator():
             csv_file.close()
 
     def write_digital_estimation_fir_to_csv_file(self, values: np.ndarray):
+        """Writes the cbadc high level estimation to a file
+        """
         np.set_printoptions(floatmode = "fixed", precision = 18)
         with open(self.path + "/digital_estimation_high_level.csv", "w") as csv_file:
             for single_estimation_value in values:
@@ -260,6 +349,8 @@ class DigitalEstimatorParameterGenerator():
 
 
     def get_eta2(self, AF, BW: int):
+        """Calculates the eta2 parameter from a defined analog system
+        """
         eta2 = (
         np.linalg.norm(
         AF.analog_system.transfer_function_matrix(
@@ -268,11 +359,19 @@ class DigitalEstimatorParameterGenerator():
         return eta2
 
     def get_input_freq(self, sim_len, n_cycles, fs):
+        """Calculates an appropriate input frequence for the input stimulation signal.
+        
+        This is dependant on the chosen simulation length, the wanted complete cycles
+            in the stimulation signal and the sample frequence of the digital control.
+        """
         samples_per_period = sim_len/n_cycles
         fi = fs / samples_per_period
         return fi
 
     def simulate_analog_system(self):
+        """Simulates the analog system and digital control and saves the digital
+            control vector stream to a file.
+        """
         # Setup the analog System.
         # We fix the number of analog states.
         #N = 6
@@ -414,25 +513,13 @@ class DigitalEstimatorParameterGenerator():
             t_stop=end_time
         )"""
 
-        # Construct byte stream.
-        #byte_stream = cbadc.utilities.control_signal_2_byte_stream(simulator, self.m_number_of_digital_states)
-
-        #cbadc.utilities.write_byte_stream_to_file(
-        #    "sinusoidal_simulation.dat", self.print_next_10_bytes(byte_stream, size, index)
-        #)
-
         return simulator
 
-
-    def print_next_10_bytes(self, stream, size, index):
-        for byte in cbadc.utilities.show_status(stream, size):
-            if index < 40:
-                print(f"{index} -> {byte}")
-                index += 1
-            yield byte
-        
-
     def simulate_digital_estimator_batch(self) -> cbadc.digital_estimator.BatchEstimator:
+        """Simulates the batch version of the digital estimator.
+
+        Currently not used.
+        """
         # Setup analog system and digital control
         N = 6
         M = N
@@ -508,6 +595,11 @@ class DigitalEstimatorParameterGenerator():
 
 
     def simulate_digital_estimator_fir(self) -> cbadc.digital_estimator.FIRFilter:
+        """Simulates the FIR version of the digital estimator.
+
+        This includes the calculation of the FIR filter coefficients and
+            creating an estimation of the input signal.
+        """
         # Setup analog system and digital control
         #N = 6
         #M = N
@@ -523,7 +615,7 @@ class DigitalEstimatorParameterGenerator():
             [0, 0, 0, beta, beta * rho, 0],
             [0, 0, 0, 0, beta, beta * rho],
         ]"""
-        a: list[list[float]] = list[list[float]]()
+        """a: list[list[float]] = list[list[float]]()
         for row_index_a in range(self.n_number_of_analog_states):
             a.append(list[float]())
             for column_index_a in range(self.n_number_of_analog_states):
@@ -538,15 +630,15 @@ class DigitalEstimatorParameterGenerator():
                     elif column_index_a == row_index_a:
                         a[row_index_a].append(self.beta * self.rho)
                     else:
-                        a[row_index_a].append(float(0.0))
+                        a[row_index_a].append(float(0.0))"""
 
         #B = [[beta], [0], [0], [0], [0], [0]]
-        b: list[float] = list[float]()
+        """b: list[float] = list[float]()
         for index_b in range(self.n_number_of_analog_states):
             if index_b == 0:
                 b.append(self.beta)
             else:
-                b.append(0.0)
+                b.append(0.0)"""
 
         #CT = np.eye(N)
         ct = np.eye(self.n_number_of_analog_states)
@@ -559,14 +651,14 @@ class DigitalEstimatorParameterGenerator():
             [0, 0, 0, 0, kappa * beta, 0],
             [0, 0, 0, 0, 0, kappa * beta],
         ]"""
-        gamma: list[list[float]] = list[list[float]]()
+        """gamma: list[list[float]] = list[list[float]]()
         for row_index_gamma in range(self.n_number_of_analog_states):
             gamma.append(list[float]())
             for column_index_gamma in range(self.n_number_of_analog_states):
                 if column_index_gamma == row_index_gamma:
                     gamma[row_index_gamma].append(self.kappa * self.beta)
                 else:
-                    gamma[row_index_gamma].append(float(0.0))
+                    gamma[row_index_gamma].append(float(0.0))"""
 
         #Gamma_tildeT = np.eye(N)
         #gamma_tildeT = np.eye(self.n_number_of_analog_states)
@@ -694,14 +786,23 @@ class DigitalEstimatorParameterGenerator():
 
 
     def get_fir_lookback_coefficient_matrix(self) -> np.ndarray:
+        """Returns the FIR lookback coefficients.
+        """
         return self.fir_hb_matrix
 
 
     def get_fir_lookahead_coefficient_matrix(self) -> np.ndarray:
+        """Returns the FIR lookahead coefficients.
+        """
         return self.fir_hf_matrix
 
 
     def simulate_fir_filter_self_programmed(self, number_format: str = "both"):
+        """This is a self programmed version of the FIR filter.
+
+        Highly inefficient. Not intended for extensive use. Was mainly programmed
+            as playground during the creation of the SystemVerilog code.
+        """
         lookback: list[int] = list[int]()
         for lookback_index in range(self.k1):
             lookback.append(0)
@@ -760,6 +861,12 @@ class DigitalEstimatorParameterGenerator():
 
 
     def compare_simulation_system_verilog_to_high_level(self, fixed_point: bool = False, fixed_point_mantissa_bits: int = 0, offset: int = 0):
+        """Compares the RTL simulation output to the cbadc golden sample.
+
+        Watches if the RTL simulation differs from the golden sample more
+            than the set SNR. This is used for the automated quality
+            assurance.
+        """
         with open(self.path + "/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
             with open(self.path + "/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
                 with open(self.path + "/digital_estimation_system_verilog_vs_high_level.csv", "w") as comparison_csv_file:
@@ -814,10 +921,17 @@ class DigitalEstimatorParameterGenerator():
 
 
     def plot_results(self):
+        """Dummy class function for the automated execution.
+
+        This was split into a class and non-class version to be able
+            to execute the plot_results function manually and automated.
+        """
         plot_results(path = self.path, k1 = self.k1, k2 = self.k2, size = self.size, T = self.T, OSR = self.OSR, down_sample_rate = self.down_sample_rate)
                 
 
 if __name__ == '__main__':
+    """Main function for debugging purposes of the simulation class.
+    """
     #high_level_simulation: DigitalEstimatorParameterGenerator = DigitalEstimatorParameterGenerator(k1 = 512, k2 = 128, data_width = 31)
     #simulation: cbadc.simulator.PreComputedControlSignalsSimulator = high_level_simulation.simulate_analog_system()
     #high_level_simulation.write_control_signal_to_csv_file(simulation)
