@@ -104,22 +104,23 @@ class DigitalEstimatorGenerator():
             generate the filter coefficients.
     """
 
-    path: str = "../df/sim/SystemVerilogFiles"
-    path_synthesis: str = "../df/src/SystemVerilogFiles"
+    path: str = "../df/sim/SystemVerilogFiles3"
+    path_synthesis: str = "../df/src/SystemVerilogFiles3"
 
     configuration_number_of_timesteps_in_clock_cycle: int = 10
-    configuration_n_number_of_analog_states: int = 4
+    configuration_n_number_of_analog_states: int = 2
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
     configuration_lookback_length: int = 128
     configuration_lookahead_length: int = 128
     configuration_fir_data_width: int = 21
     configuration_fir_lut_input_width: int = 4
     configuration_simulation_length: int = 1 << 12
-    configuration_over_sample_rate: int = 15
+    configuration_over_sample_rate: int = 32
     configuration_down_sample_rate: int = configuration_over_sample_rate
     configuration_counter_type: str = "gray"
     configuration_combinatorial_synchronous: str = "synchronous"
-    configuration_required_snr_db: float = 50
+    configuration_required_snr_db: float = 55
+    configuration_coefficients_variable_fixed: str = "variable"
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = None
 
@@ -138,6 +139,10 @@ class DigitalEstimatorGenerator():
         """
         self.configuration_m_number_of_digital_states = self.configuration_n_number_of_analog_states
         self.configuration_down_sample_rate = self.configuration_over_sample_rate
+
+        directory: str = self.path
+        Path(directory).mkdir(parents = True, exist_ok = True)
+        assert Path.exists(Path(directory))
 
         self.high_level_simulation = CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator(
             path = self.path,
@@ -488,4 +493,4 @@ if __name__ == '__main__':
     simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
     if simulation_result[0] == 0:
         digital_estimator_generator.write_synthesis_scripts()
-        digital_estimator_generator.synthesize()
+        #digital_estimator_generator.synthesize()
