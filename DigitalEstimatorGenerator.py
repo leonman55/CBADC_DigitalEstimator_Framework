@@ -104,8 +104,8 @@ class DigitalEstimatorGenerator():
             generate the filter coefficients.
     """
 
-    path: str = "../df/sim/SystemVerilogFiles3"
-    path_synthesis: str = "../df/src/SystemVerilogFiles3"
+    path: str = "../df/sim/SystemVerilogFiles4"
+    path_synthesis: str = "../df/src/SystemVerilogFiles4"
 
     configuration_number_of_timesteps_in_clock_cycle: int = 10
     configuration_n_number_of_analog_states: int = 2
@@ -120,7 +120,7 @@ class DigitalEstimatorGenerator():
     configuration_counter_type: str = "gray"
     configuration_combinatorial_synchronous: str = "synchronous"
     configuration_required_snr_db: float = 55
-    configuration_coefficients_variable_fixed: str = "variable"
+    configuration_coefficients_variable_fixed: str = "fixed"
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = None
 
@@ -157,7 +157,7 @@ class DigitalEstimatorGenerator():
         )
         self.high_level_simulation.write_control_signal_to_csv_file(self.high_level_simulation.simulate_analog_system())
 
-        self.top_module_name = "DigitalEstimator_" + str(self.configuration_n_number_of_analog_states) + "_" + str(self.configuration_over_sample_rate) + "_" + str(self.configuration_fir_data_width) + "_" + str(self.configuration_lookback_length) + "_" + str(self.configuration_lookahead_length) + "_" + str(self.configuration_fir_lut_input_width)
+        self.top_module_name = "DigitalEstimator_" + str(self.configuration_n_number_of_analog_states) + "_" + str(self.configuration_over_sample_rate) + "_" + str(self.configuration_fir_data_width) + "_" + str(self.configuration_lookback_length) + "_" + str(self.configuration_lookahead_length) + "_" + str(self.configuration_fir_lut_input_width) + "_" + str(self.configuration_coefficients_variable_fixed)
 
         digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, "DigitalEstimatorTestbench")
         digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = self.configuration_number_of_timesteps_in_clock_cycle
@@ -173,6 +173,7 @@ class DigitalEstimatorGenerator():
         digital_estimator_testbench.high_level_simulation = self.high_level_simulation
         digital_estimator_testbench.configuration_downsample_clock_counter_type = self.configuration_counter_type
         digital_estimator_testbench.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
+        digital_estimator_testbench.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
         digital_estimator_testbench.top_module_name = self.top_module_name
         digital_estimator_testbench.generate()
 
@@ -185,6 +186,8 @@ class DigitalEstimatorGenerator():
         digital_estimator.configuration_lookahead_length = self.configuration_lookahead_length
         digital_estimator.configuration_down_sample_rate = self.configuration_down_sample_rate
         digital_estimator.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
+        digital_estimator.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
+        digital_estimator.high_level_simulation = self.high_level_simulation
         digital_estimator.module_name = self.top_module_name
         digital_estimator.generate()
         self.module_list.append(digital_estimator)
@@ -492,5 +495,6 @@ if __name__ == '__main__':
     digital_estimator_generator.generate()
     simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
     if simulation_result[0] == 0:
-        digital_estimator_generator.write_synthesis_scripts()
+        pass
+        #digital_estimator_generator.write_synthesis_scripts()
         #digital_estimator_generator.synthesize()

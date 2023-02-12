@@ -36,6 +36,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_over_sample_rate: int = 25
     configuration_downsample_clock_counter_type: str = "binary"
     configuration_combinatorial_synchronous: str = "combinatorial"
+    configuration_coefficients_variable_fixed: str = "variable"
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator
 
@@ -93,13 +94,16 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
     logic rst;
     logic clk;
-    logic enable_lookup_table_coefficient_shift_in;
+    """
+        if self.configuration_coefficients_variable_fixed == "variable":
+            content += """logic enable_lookup_table_coefficient_shift_in;
     logic [OUTPUT_DATA_WIDTH - 1 : 0] lookup_table_coefficient;
-    logic [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input;
     //logic [(LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookback_lookup_table_entries;
     logic [LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
     //logic [(LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookahead_lookup_table_entries;
     logic [LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
+    """
+        content += """logic [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input;
     wire signed [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output;
     wire signal_estimation_valid_out;
 
@@ -118,7 +122,10 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         #CLOCK_HALF_PERIOD;
     end
 
-    initial begin
+    """
+    
+        if self.configuration_coefficients_variable_fixed == "variable":
+            content += """initial begin
         enable_lookup_table_coefficient_shift_in = 1'b0;
         lookup_table_coefficient = {OUTPUT_DATA_WIDTH{1'b0}};
 
@@ -145,7 +152,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         $info("Coefficient shift in finished.\\n");
     end
 
-    initial begin
+    """
+    
+        content += """initial begin
         static int control_signal_file = $fopen("./control_signal.csv", "r");
         if(control_signal_file == 0) begin
             $error("Control signal input file could not be opened!");
@@ -154,7 +163,12 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
         digital_control_input = {N_NUMBER_ANALOG_STATES{1'b0}};
 
-        @(negedge enable_lookup_table_coefficient_shift_in);
+        """
+        if self.configuration_coefficients_variable_fixed == "variable":
+            content += """@(negedge enable_lookup_table_coefficient_shift_in);
+        """
+        elif self.configuration_coefficients_variable_fixed == "fixed":
+            content += """@(negedge rst);
         """
         if self.configuration_down_sample_rate == 1:
             content += """@(posedge clk);
@@ -183,7 +197,12 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             $finish;
         end
 
-        @(negedge enable_lookup_table_coefficient_shift_in);
+        """
+        if self.configuration_coefficients_variable_fixed == "variable":
+            content += """@(negedge enable_lookup_table_coefficient_shift_in);
+        """
+        elif self.configuration_coefficients_variable_fixed == "fixed":
+            content += """@(negedge rst);
         """
         if self.configuration_down_sample_rate == 1:
             content += """repeat(3) begin
@@ -225,13 +244,19 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         content += """end
     end
 
-    initial begin
+    """
+        
+        if self.configuration_coefficients_variable_fixed == "variable":
+            content += """initial begin
         lookback_lookup_table_entries = """
-        content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n\t\t"
-        content += "lookahead_lookup_table_entries = "
-        content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n"
-        content += f"""\tend
+            content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n\t\t"
+            content += "lookahead_lookup_table_entries = "
+            content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n"
+            content += f"""\tend
+    
+    """
 
+        content += f"""
     {self.top_module_name} #(
             .N_NUMBER_ANALOG_STATES(N_NUMBER_ANALOG_STATES),
             .M_NUMBER_DIGITAL_STATES(M_NUMBER_DIGITAL_STATES),
@@ -245,9 +270,12 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         dut_digital_estimator (
             .rst(rst),
             .clk(clk),
-            .enable_lookup_table_coefficient_shift_in(enable_lookup_table_coefficient_shift_in),
+            """
+        if self.configuration_coefficients_variable_fixed == "variable":
+            content += """.enable_lookup_table_coefficient_shift_in(enable_lookup_table_coefficient_shift_in),
             .lookup_table_coefficient(lookup_table_coefficient),
-            .digital_control_input(digital_control_input),
+            """
+        content += """.digital_control_input(digital_control_input),
             .signal_estimation_valid_out(signal_estimation_valid_out),
             .signal_estimation_output(signal_estimation_output)
     );

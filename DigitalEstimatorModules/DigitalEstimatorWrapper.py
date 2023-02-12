@@ -11,6 +11,7 @@ import SystemVerilogSignalSign
 from SystemVerilogSyntaxGenerator import decimal_number, get_parameter_value, connect_port_array, ndarray_to_system_verilog_array, set_parameter_value
 import CBADC_HighLevelSimulation
 import cbadc
+import numpy
 
 
 class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
@@ -27,6 +28,9 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     configuration_lookahead_length: int = 1
     configuration_down_sample_rate: int = 1
     configuration_combinatorial_synchronous: str = "combinatorial"
+    configuration_coefficients_variable_fixed: str = "variable"
+
+    high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator
 
     def __init__(self, path: str, name: str):
         super().__init__(path, name)
@@ -51,9 +55,12 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     ) (
         input wire rst,
         input wire clk,
-        input wire enable_lookup_table_coefficient_shift_in,
+        """
+        if self.configuration_coefficients_variable_fixed == "variable":
+            content += """input wire enable_lookup_table_coefficient_shift_in,
         input wire [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_coefficient,
-        input wire [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input,
+        """
+        content += """input wire [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input,
         output logic signal_estimation_valid_out,
         output logic [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output
 );
@@ -69,14 +76,29 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     wire [LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
     wire [LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
     
-    assign internal_rst = rst | enable_lookup_table_coefficient_shift_in;
+    """
+        if self.configuration_coefficients_variable_fixed == "variable":
+            content += """assign internal_rst = rst | enable_lookup_table_coefficient_shift_in;
+    """
+        elif self.configuration_coefficients_variable_fixed == "fixed":
+            content += """assign internal_rst = rst;
     """
         if self.configuration_down_sample_rate > 1:
             content += f"""assign clk_sample_shift_register = clk_downsample | internal_rst;
-            """
+    
+    """
         else:
             content += f"""assign clk_sample_shift_register = clk | internal_rst;
-            """
+    
+    """
+        if self.configuration_coefficients_variable_fixed == "fixed":
+            content += "assign lookback_lookup_table_entries = "
+            content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\t\t"
+            content += "assign lookahead_lookup_table_entries = "
+            content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n"
+            content += """
+    
+    """
         content += """
     always_ff @(posedge clk_sample_shift_register) begin
         if(internal_rst == 1'b1) begin
@@ -119,8 +141,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     
     """
 
-    
-        content += """LookUpTableCoefficientRegister #(
+        if self.configuration_coefficients_variable_fixed == "variable":
+            content += """LookUpTableCoefficientRegister #(
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH),
             .LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT(LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT),
             .LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT(LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT)
