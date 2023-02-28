@@ -895,6 +895,8 @@ class DigitalEstimatorParameterGenerator():
                     high_level_simulation_csv_file.close()
                     comparison_csv_file.close()
 
+                    print("\tRTL simulation result equals Python simulation result: " + str(difference_below_snr))
+
 
                     """offset_counter: int = 0
                     while True:

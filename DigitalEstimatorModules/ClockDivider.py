@@ -66,7 +66,7 @@ endmodule"""
             content = f"""module ClockDivider #(
         parameter DOWN_SAMPLE_RATE = {self.configuration_down_sample_rate},
         localparam EDGE_COUNTER_TOP_VALUE = ((2 * DOWN_SAMPLE_RATE) - 1) ^ (((2 * DOWN_SAMPLE_RATE) - 1) >> 1),
-        localparam CLOCK_COUNTER_OUTPUT_WIDTH = (DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil($clog2(2 * (DOWN_SAMPLE_RATE - 1))))
+        localparam CLOCK_COUNTER_OUTPUT_WIDTH = (DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil($clog2(DOWN_SAMPLE_RATE - 1)))
     ) (
         input wire rst,
         input wire clk,
@@ -77,17 +77,17 @@ endmodule"""
     logic [CLOCK_COUNTER_OUTPUT_WIDTH : 0] edge_counter;
     logic [CLOCK_COUNTER_OUTPUT_WIDTH : 0] edge_counter_binary;
 
-    assign clock_divider_counter = edge_counter_binary >> 1;
+    assign clock_divider_counter = edge_counter_binary;
 
-    always_ff @(clk) begin
+    always_ff @(posedge clk) begin
         if(rst) begin
             clk_downsample <= 1'b0;
         end
         else begin
-            if(edge_counter == (((2 * DOWN_SAMPLE_RATE) - 1) ^ (((2 * DOWN_SAMPLE_RATE) - 1) >> 1))) begin
+            if(edge_counter == ((DOWN_SAMPLE_RATE - 1) ^ ((DOWN_SAMPLE_RATE - 1) >> 1))) begin
                 clk_downsample <= 1'b0;
             end
-            else if(edge_counter == ((((2 * DOWN_SAMPLE_RATE) / 2) - 1) ^ ((((2 * DOWN_SAMPLE_RATE) / 2) - 1) >> 1))) begin
+            else if(edge_counter == (((DOWN_SAMPLE_RATE / 2) - 1) ^ (((DOWN_SAMPLE_RATE / 2) - 1) >> 1))) begin
                 clk_downsample <= 1'b1;
             end
         end
@@ -96,7 +96,7 @@ endmodule"""
 
     GrayCounter #(
             .BIT_SIZE(CLOCK_COUNTER_OUTPUT_WIDTH + 1),
-            .TOP_VALUE((2 * DOWN_SAMPLE_RATE) - 1)
+            .TOP_VALUE(DOWN_SAMPLE_RATE - 1)
         )
         gray_counter (
             .rst(rst),
@@ -115,20 +115,6 @@ endmodule"""
 
 
 endmodule"""
-
-        """always_comb begin
-        if(rst) begin
-            clk_downsample = 1'b0;
-        end
-        else begin
-            if(edge_counter == {{CLOCK_COUNTER_OUTPUT_WIDTH{{1'b0}}}}) begin
-                clk_downsample = 1'b0;
-            end
-            else if(edge_counter == (((2 * DOWN_SAMPLE_RATE) / 2) ^ (((2 * DOWN_SAMPLE_RATE) / 2) >> 1))) begin
-                clk_downsample = 1'b1;
-            end
-        end
-    end"""
 
         self.syntax_generator.single_line_no_linebreak(content, indentation = 0)
         self.syntax_generator.close()

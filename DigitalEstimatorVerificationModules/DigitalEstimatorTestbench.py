@@ -265,7 +265,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             .LOOKUP_TABLE_INPUT_WIDTH(INPUT_WIDTH),
             .LOOKUP_TABLE_DATA_WIDTH(OUTPUT_DATA_WIDTH),
             .OUTPUT_DATA_WIDTH(OUTPUT_DATA_WIDTH),
-            .DOWN_SAMPLE_RATE({self.configuration_down_sample_rate})
+            .DOWN_SAMPLE_RATE(DOWN_SAMPLE_RATE)
         )
         dut_digital_estimator (
             .rst(rst),

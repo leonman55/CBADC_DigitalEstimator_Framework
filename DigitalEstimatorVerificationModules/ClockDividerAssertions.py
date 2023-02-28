@@ -59,8 +59,8 @@ endmodule"""
         elif self.configuration_counter_type == "gray":
             content = """module ClockDividerAssertions #(
         parameter DOWN_SAMPLE_RATE = 1,
-        localparam EDGE_COUNTER_TOP_VALUE = (2 * DOWN_SAMPLE_RATE) - 1,
-        localparam CLOCK_COUNTER_OUTPUT_WIDTH = (DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil($clog2(2 * (DOWN_SAMPLE_RATE - 1))))
+        localparam EDGE_COUNTER_TOP_VALUE = DOWN_SAMPLE_RATE - 1,
+        localparam CLOCK_COUNTER_OUTPUT_WIDTH = (DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil($clog2(DOWN_SAMPLE_RATE - 1)))
     ) (
         input wire rst,
         input wire clk,
@@ -82,11 +82,11 @@ endmodule"""
     endproperty
 
 	property CheckCounting;
-        @(clk) GrayCodeToBinary($past(rst)) == 0 && !$isunknown($past(edge_counter)) |-> (GrayCodeToBinary($past(edge_counter)) + 1) % (EDGE_COUNTER_TOP_VALUE + 1) == GrayCodeToBinary(edge_counter);
+        @(posedge clk) GrayCodeToBinary($past(rst)) == 0 && !$isunknown($past(edge_counter)) |-> (GrayCodeToBinary($past(edge_counter)) + 1) % (EDGE_COUNTER_TOP_VALUE + 1) == GrayCodeToBinary(edge_counter);
     endproperty
 
     property CheckDownsampledClock;
-        @(clk) (GrayCodeToBinary(edge_counter) < ((EDGE_COUNTER_TOP_VALUE + 1) / 2)) ? clk_downsample == 1'b0 : clk_downsample == 1'b1;
+        @(posedge clk) (GrayCodeToBinary(edge_counter) < ((EDGE_COUNTER_TOP_VALUE + 1) / 2)) ? clk_downsample == 1'b0 : clk_downsample == 1'b1;
     endproperty
 
     assert property (Reset)

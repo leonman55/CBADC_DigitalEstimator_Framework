@@ -104,8 +104,8 @@ class DigitalEstimatorGenerator():
             generate the filter coefficients.
     """
 
-    path: str = "../df/sim/SystemVerilogFiles4"
-    path_synthesis: str = "../df/src/SystemVerilogFiles4"
+    path: str = "../df/sim/SystemVerilogFiles6"
+    path_synthesis: str = "../df/src/SystemVerilogFiles6"
 
     configuration_number_of_timesteps_in_clock_cycle: int = 10
     configuration_n_number_of_analog_states: int = 2
@@ -241,7 +241,7 @@ class DigitalEstimatorGenerator():
             if self.configuration_counter_type == "gray":
                 gray_counter: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.GrayCounter.GrayCounter(self.path, "GrayCounter")
                 gray_counter.configuration_counter_bit_width = math.ceil(math.log2(float(self.configuration_down_sample_rate * 2.0)))
-                gray_counter.configuration_clock_edge = "both"
+                gray_counter.configuration_clock_edge = "posedge"
                 gray_counter.generate()
                 self.module_list.append(gray_counter)
 
@@ -369,10 +369,19 @@ class DigitalEstimatorGenerator():
             return 3, "Signal-to-Noise-Ratio (SNR) is too low!"
         else:
             return 0, "Test passed."
+        
+    def copy_design_files_for_synthesis(self):
+        directory: str = self.path_synthesis
+        Path(directory).mkdir(parents = True, exist_ok = True)
+        assert Path.exists(Path(directory))
+        for module in self.module_list:
+            module_filename: str = module.name + ".sv"
+            source: str = self.path + "/" + module_filename
+            destination: str = self.path_synthesis + "/" + module_filename
+            shutil.copyfile(source, destination)
 
-    def write_synthesis_scripts(self):
+    def write_synthesis_scripts_genus(self):
         try:
-            #current_working_directory = Path.cwd()
             directory: str = self.path_synthesis
             Path(directory).mkdir(parents = True, exist_ok = True)
             assert Path.exists(Path(directory))
@@ -381,9 +390,9 @@ class DigitalEstimatorGenerator():
                 for module in self.module_list:
                     module_filename: str = module.name + ".sv"
                     sources_file.write(module_filename + "\n")
-                    source: str = self.path + "/" + module_filename
-                    destination: str = self.path_synthesis + "/" + module_filename
-                    shutil.copyfile(source, destination)
+                    #source: str = self.path + "/" + module_filename
+                    #destination: str = self.path_synthesis + "/" + module_filename
+                    #shutil.copyfile(source, destination)
 
             script_lines: list[str] = list[str]()
             with open("../df/synth_template", mode = "r") as synthesize_script_old:
@@ -412,7 +421,7 @@ class DigitalEstimatorGenerator():
         except:
             pass
 
-    def synthesize(self):
+    def synthesize_genus(self):
         """Starts the simulation of the configured system and checks the outputs.
 
         This includes the cbadc Python high level simulation.
@@ -424,6 +433,55 @@ class DigitalEstimatorGenerator():
         """
         synth_genus = subprocess.Popen(["./synth"], cwd = self.path_synthesis, text = True, shell = True)
         synth_genus.wait()
+
+    def write_synthesis_scripts_synopsys(self):
+        try:
+            directory: str = self.path_synthesis
+            Path(directory).mkdir(parents = True, exist_ok = True)
+            assert Path.exists(Path(directory))
+
+            shutil.copyfile("../df/scripts/common_setup_template.tcl", self.path_synthesis + "/common_setup.tcl")
+            shutil.copyfile("../df/scripts/dc_setup_template.tcl", self.path_synthesis + "/dc_setup.tcl")
+            shutil.copyfile("../df/scripts/dc_template.tcl", self.path_synthesis + "/dc.tcl")
+
+            script_lines: list[str] = list[str]()
+            with open("../df/scripts/runSynopsysDesignCompilerSynthesis_Template.sh", mode = "r") as synthesize_script_old:
+                script_lines = synthesize_script_old.readlines()
+                for index in range(len(script_lines)):
+                    if script_lines[index].find("RTL_SOURCE_FILES=") != -1:
+                        script_lines.pop(index)
+                        design_files: str = "\""
+                        for design_file_name in self.module_list:
+                            design_files += design_file_name.name + ".sv "
+                        design_files = design_files.removesuffix(" ") + "\""
+                        script_lines.insert(index, "RTL_SOURCE_FILES=" + design_files + "\n")
+                        #continue
+                    if script_lines[index].find("DESIGN_NAME=") != -1:
+                        script_lines.pop(index)
+                        script_lines.insert(index, "DESIGN_NAME=\"" + self.top_module_name + "\"\n")
+                        #continue
+                    if script_lines[index].find("DESIGN_LABEL=") != -1:
+                        script_lines.pop(index)
+                        script_lines.insert(index, "DESIGN_LABEL=\"" + self.top_module_name + "\"\n")
+                        #continue
+            with open(directory + "/runSynopsysDesignCompilerSynthesis.sh", mode = "w") as synthesize_script:
+                synthesize_script.writelines(script_lines)
+            Path(directory + "/runSynopsysDesignCompilerSynthesis.sh").chmod(S_IRWXU)
+        except:
+            pass
+
+    def synthesize_synopsys(self):
+        """Starts the simulation of the configured system and checks the outputs.
+
+        This includes the cbadc Python high level simulation.
+        A self programmed simulation, which was used to check the SystemVerilog implementation.
+        The RTL simulation.
+        The checks include checking the output logs of the RTL simulation,
+        comparing the high level simulation against the RTL simulation
+        and the achieved performance of the system.
+        """
+        synth_synopsys = subprocess.Popen(["./runSynopsysDesignCompilerSynthesis.sh"], cwd = self.path_synthesis, text = True, shell = True)
+        synth_synopsys.wait()
 
     def write_xrun_simulation_file(self, name: str, settings: list[str]):
         """Generates the script for the RTL simulation.
@@ -495,6 +553,9 @@ if __name__ == '__main__':
     digital_estimator_generator.generate()
     simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
     if simulation_result[0] == 0:
-        pass
-        #digital_estimator_generator.write_synthesis_scripts()
-        #digital_estimator_generator.synthesize()
+        #pass
+        digital_estimator_generator.copy_design_files_for_synthesis()
+        #digital_estimator_generator.write_synthesis_scripts_genus()
+        #digital_estimator_generator.synthesize_genus()
+        digital_estimator_generator.write_synthesis_scripts_synopsys()
+        digital_estimator_generator.synthesize_synopsys()

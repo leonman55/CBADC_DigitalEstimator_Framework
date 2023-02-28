@@ -32,7 +32,7 @@ class GrayCounterAssertions(SystemVerilogModule.SystemVerilogModule):
     endproperty
 
 	property CheckCounting;
-        @(clk) GrayCodeToBinary($past(rst)) == 0 && !$isunknown($past(counter)) |-> (GrayCodeToBinary($past(counter)) + 1) % (TOP_VALUE + 1) == GrayCodeToBinary(counter);
+        @(posedge clk) GrayCodeToBinary($past(rst)) == 0 && !$isunknown($past(counter)) |-> (GrayCodeToBinary($past(counter)) + 1) % (TOP_VALUE + 1) == GrayCodeToBinary(counter);
     endproperty
 
     assert property (Reset)
