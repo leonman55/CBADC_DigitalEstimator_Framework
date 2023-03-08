@@ -104,8 +104,8 @@ class DigitalEstimatorGenerator():
             generate the filter coefficients.
     """
 
-    path: str = "../df/sim/SystemVerilogFiles6"
-    path_synthesis: str = "../df/src/SystemVerilogFiles6"
+    path: str = "../df/sim/SystemVerilogFiles2"
+    path_synthesis: str = "../df/src/SystemVerilogFiles2"
 
     configuration_number_of_timesteps_in_clock_cycle: int = 10
     configuration_n_number_of_analog_states: int = 2
@@ -174,6 +174,7 @@ class DigitalEstimatorGenerator():
         digital_estimator_testbench.configuration_downsample_clock_counter_type = self.configuration_counter_type
         digital_estimator_testbench.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
         digital_estimator_testbench.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
+        digital_estimator_testbench.configuration_mapped_simulation = False
         digital_estimator_testbench.top_module_name = self.top_module_name
         digital_estimator_testbench.generate()
 
@@ -541,6 +542,95 @@ class DigitalEstimatorGenerator():
                 return 1
             else:
                 return 0
+            
+    def generate_xrun_mapped_simulation_script(self, name: str = "sim_mapped_genus.sh", synthesis_program: str = "genus"):
+        mapped_simulation_script: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        mapped_simulation_script.set_path(self.path)
+        mapped_simulation_script.set_name(name)
+        mapped_simulation_script.open_output_file()
+        mapped_settings: list[str] = list[str]()
+        mapped_settings.append("source ~/pro/acmos2/virtuoso/setup_user")
+        mapped_settings.append("source ~/pro/fall2022/bash/setup_user")
+        mapped_settings.append("")
+        mapped_settings.append("xrun -f xrun_options_mapped_" + synthesis_program)
+        for line in mapped_settings:
+            mapped_simulation_script.write_line_linebreak(line)
+        mapped_simulation_script.close_output_file()
+        Path(self.path + "/" + name).chmod(S_IRWXU)
+
+    def generate_xrun_mapped_simulation_options_file(self, name: str = "xrun_options_mapped_genus", synthesis_program: str = "genus"):
+        mapped_options_file: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        mapped_options_file.set_path(self.path)
+        mapped_options_file.set_name(name)
+        mapped_options_file.open_output_file()
+        mapped_options: list[str] = list[str]()
+        mapped_options.append("-64bit")
+        mapped_options.append("-access +rwc")
+        mapped_options.append("-top DigitalEstimatorTestbench")
+        mapped_options.append("-input xrun_mapped_" + synthesis_program + ".tcl")
+        mapped_options.append("DigitalEstimatorTestbench_mapped.sv")
+        mapped_options.append(self.top_module_name + ".mapped." + synthesis_program + ".v")
+        for line in mapped_options:
+            mapped_options_file.write_line_linebreak(line)
+        mapped_options_file.close_output_file()
+
+    def generate_xrun_mapped_simulation_tcl_command_file(self, name: str = "xrun_mapped_genus.tcl", synthesis_program: str = "genus"):
+        mapped_tcl_command_file: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        mapped_tcl_command_file.set_path(self.path)
+        mapped_tcl_command_file.set_name(name)
+        mapped_tcl_command_file.open_output_file()
+        mapped_commands: list[str] = list[str]()
+        mapped_commands.append("database -open mapped_signal_activity_" + synthesis_program + "_vcd -vcd -into mapped_signal_activity_" + synthesis_program + ".vcd")
+        lookback_lookup_table_entries_size: int = self.configuration_m_number_of_digital_states * self.configuration_lookback_length * self.configuration_fir_data_width * 2**self.configuration_fir_lut_input_width / self.configuration_fir_lut_input_width
+        lookahead_lookup_table_entries_size: int = self.configuration_m_number_of_digital_states * self.configuration_lookahead_length * self.configuration_fir_data_width * 2**self.configuration_fir_lut_input_width / self.configuration_fir_lut_input_width
+        mapped_commands.append("probe -create -vcd -database mapped_signal_activity_" + synthesis_program + "_vcd -packed " + str(lookback_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookback_lookup_table_entries")
+        mapped_commands.append("probe -create -vcd -database mapped_signal_activity_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookahead_lookup_table_entries")
+        mapped_commands.append("probe -create -vcd -database mapped_signal_activity_" + synthesis_program + "_vcd -packed " + str(lookback_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookback_lookup_table_block.lookup_table_entries")
+        mapped_commands.append("probe -create -vcd -database mapped_signal_activity_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookahead_lookup_table_block.lookup_table_entries")
+        mapped_commands.append("probe -create -vcd -database mapped_signal_activity_" + synthesis_program + "_vcd -depth all -all")
+        mapped_commands.append("run")
+        mapped_commands.append("exit")
+        for line in mapped_commands:
+            mapped_tcl_command_file.write_line_linebreak(line)
+        mapped_tcl_command_file.close_output_file()
+
+    def copy_mapped_design_genus(self):
+        shutil.copyfile("../df/out/" + self.top_module_name + "/syn/" + self.top_module_name + ".v", self.path + "/" + self.top_module_name + ".mapped.genus.v")
+
+    def copy_mapped_design_synopsys(self):
+        shutil.copyfile(self.path_synthesis + "/out/" + self.top_module_name + "/results/" + self.top_module_name + ".mapped.v", self.path + "/" + self.top_module_name + ".mapped.synopsys.v")
+
+    def generate_testbench_mapped_design(self):
+        digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, "DigitalEstimatorTestbench_mapped")
+        digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = self.configuration_number_of_timesteps_in_clock_cycle
+        digital_estimator_testbench.configuration_lookback_length = self.configuration_lookback_length
+        digital_estimator_testbench.configuration_lookahead_length = self.configuration_lookahead_length
+        digital_estimator_testbench.configuration_n_number_of_analog_states = self.configuration_n_number_of_analog_states
+        digital_estimator_testbench.configuration_m_number_of_digital_states = self.configuration_m_number_of_digital_states
+        digital_estimator_testbench.configuration_fir_data_width = self.configuration_fir_data_width
+        digital_estimator_testbench.configuration_fir_lut_input_width = self.configuration_fir_lut_input_width
+        digital_estimator_testbench.configuration_simulation_length = self.configuration_simulation_length
+        digital_estimator_testbench.configuration_down_sample_rate = self.configuration_down_sample_rate
+        digital_estimator_testbench.configuration_over_sample_rate = self.configuration_over_sample_rate
+        digital_estimator_testbench.high_level_simulation = self.high_level_simulation
+        digital_estimator_testbench.configuration_downsample_clock_counter_type = self.configuration_counter_type
+        digital_estimator_testbench.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
+        digital_estimator_testbench.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
+        digital_estimator_testbench.configuration_mapped_simulation = True
+        digital_estimator_testbench.top_module_name = self.top_module_name
+        digital_estimator_testbench.generate()
+
+    def simulate_mapped_design(self, synthesis_program: str = "genus"):
+        self.generate_xrun_mapped_simulation_script(name = "sim_mapped_" + synthesis_program + ".sh", synthesis_program = synthesis_program)
+        self.generate_xrun_mapped_simulation_options_file(name = "xrun_options_mapped_" + synthesis_program, synthesis_program = synthesis_program)
+        self.generate_xrun_mapped_simulation_tcl_command_file(name = "xrun_mapped_" + synthesis_program + ".tcl", synthesis_program = synthesis_program)
+        if synthesis_program == "genus":
+            self.copy_mapped_design_genus()
+        elif synthesis_program == "synopsys":
+            self.copy_mapped_design_synopsys()
+        self.generate_testbench_mapped_design()
+        simulation_mapped = subprocess.Popen(["./sim_mapped_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
+        simulation_mapped.wait()
 
 
 if __name__ == '__main__':
@@ -553,9 +643,11 @@ if __name__ == '__main__':
     digital_estimator_generator.generate()
     simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
     if simulation_result[0] == 0:
-        #pass
+    #    pass
         digital_estimator_generator.copy_design_files_for_synthesis()
-        #digital_estimator_generator.write_synthesis_scripts_genus()
-        #digital_estimator_generator.synthesize_genus()
+        digital_estimator_generator.write_synthesis_scripts_genus()
+        digital_estimator_generator.synthesize_genus()
         digital_estimator_generator.write_synthesis_scripts_synopsys()
         digital_estimator_generator.synthesize_synopsys()
+        digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
+        digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")

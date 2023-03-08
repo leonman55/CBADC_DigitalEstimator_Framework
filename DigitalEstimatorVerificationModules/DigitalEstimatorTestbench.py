@@ -37,6 +37,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_downsample_clock_counter_type: str = "binary"
     configuration_combinatorial_synchronous: str = "combinatorial"
     configuration_coefficients_variable_fixed: str = "variable"
+    configuration_mapped_simulation: bool = False
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator
 
@@ -257,7 +258,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     """
 
         content += f"""
-    {self.top_module_name} #(
+    {self.top_module_name} """
+        if self.configuration_mapped_simulation == False:
+            content += """#(
             .N_NUMBER_ANALOG_STATES(N_NUMBER_ANALOG_STATES),
             .M_NUMBER_DIGITAL_STATES(M_NUMBER_DIGITAL_STATES),
             .LOOKBACK_SIZE(LOOKBACK_SIZE),
@@ -267,7 +270,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             .OUTPUT_DATA_WIDTH(OUTPUT_DATA_WIDTH),
             .DOWN_SAMPLE_RATE(DOWN_SAMPLE_RATE)
         )
-        dut_digital_estimator (
+        """
+        content += """dut_digital_estimator (
             .rst(rst),
             .clk(clk),
             """
@@ -282,9 +286,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
 
     """
-        
-        if self.configuration_combinatorial_synchronous == "combinatorial":
-            content += """bind AdderCombinatorial AdderCombinatorialAssertions #(
+        if self.configuration_mapped_simulation == False:
+            if self.configuration_combinatorial_synchronous == "combinatorial":
+                content += """bind AdderCombinatorial AdderCombinatorialAssertions #(
             .INPUT_WIDTH(INPUT_WIDTH)
         )
         adder_combinatorial_bind (
@@ -328,8 +332,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     );
     
 """
-        elif self.configuration_combinatorial_synchronous == "synchronous":
-            content += """bind AdderSynchronous AdderSynchronousAssertions #(
+            elif self.configuration_combinatorial_synchronous == "synchronous":
+                content += """bind AdderSynchronous AdderSynchronousAssertions #(
             .INPUT_WIDTH(INPUT_WIDTH)
         )
         adder_synchronous_bind (
@@ -378,8 +382,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     
 """
 
-        if self.configuration_down_sample_rate > 1:
-            content += """\tbind ClockDivider ClockDividerAssertions #(
+            if self.configuration_down_sample_rate > 1:
+                content += """\tbind ClockDivider ClockDividerAssertions #(
             .DOWN_SAMPLE_RATE(DOWN_SAMPLE_RATE)
         )
         clock_divider_bind (
@@ -401,9 +405,10 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             .out(out)
     );
     
+
 """
-            if self.configuration_downsample_clock_counter_type == "gray":
-                content += """\tbind GrayCodeToBinary GrayCodeToBinaryAssertions #(
+                if self.configuration_downsample_clock_counter_type == "gray":
+                    content += """\tbind GrayCodeToBinary GrayCodeToBinaryAssertions #(
             .BIT_SIZE(BIT_SIZE)
         )
         gray_code_to_binary_bind (
@@ -422,8 +427,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             .counter(counter)
     );
     
+
 """
-        content += "\nendmodule"
+        content += "endmodule"
 
         self.syntax_generator.single_line_no_linebreak(content, indentation = 0)
         self.syntax_generator.close()

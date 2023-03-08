@@ -14,8 +14,8 @@ class ClockDividerAssertions(SystemVerilogModule.SystemVerilogModule):
         if self.configuration_counter_type == "binary":
             content = f"""module ClockDividerAssertions #(
         parameter DOWN_SAMPLE_RATE = 1,
-        localparam EDGE_COUNTER_TOP_VALUE = (2 * DOWN_SAMPLE_RATE) - 1,
-        localparam CLOCK_COUNTER_OUTPUT_WIDTH = (DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil($clog2(2 * (DOWN_SAMPLE_RATE - 1))))
+        localparam EDGE_COUNTER_TOP_VALUE = DOWN_SAMPLE_RATE - 1,
+        localparam CLOCK_COUNTER_OUTPUT_WIDTH = (DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil($clog2(DOWN_SAMPLE_RATE - 1)))
     ) (
         input wire rst,
         input wire clk,
@@ -24,24 +24,16 @@ class ClockDividerAssertions(SystemVerilogModule.SystemVerilogModule):
         input wire [CLOCK_COUNTER_OUTPUT_WIDTH - 1 : 0] clock_divider_counter
 );
 
-    function automatic integer GrayCodeToBinary(input [CLOCK_COUNTER_OUTPUT_WIDTH : 0] gray_code);
-        integer binary = 0;
-        for(integer i = CLOCK_COUNTER_OUTPUT_WIDTH + 1; i >= 0; i--) begin
-            binary = binary | ((((1 << (i + 1)) & binary) >> 1) ^ ((1 << i) & gray_code));
-        end
-        return binary;
-    endfunction
-
     property Reset;
         @(negedge rst) clk_downsample == 1'b0 && clock_divider_counter == 0;
     endproperty
 
 	property CheckCounting;
-        @(clk) $past(rst) == 0 && !$isunknown($past(edge_counter)) |-> ($past(edge_counter) + 1) % (EDGE_COUNTER_TOP_VALUE + 1) == edge_counter;
+        @(posedge clk) $past(rst) == 0 && !$isunknown($past(edge_counter)) |-> ($past(edge_counter) + 1) % (EDGE_COUNTER_TOP_VALUE + 1) == edge_counter;
     endproperty
 
     property CheckDownsampledClock;
-        @(clk) (edge_counter < ((EDGE_COUNTER_TOP_VALUE + 1) / 2)) ? clk_downsample == 1'b0 : clk_downsample == 1'b1;
+        @(posedge clk) (edge_counter < ((EDGE_COUNTER_TOP_VALUE + 1) / 2)) ? clk_downsample == 1'b0 : clk_downsample == 1'b1;
     endproperty
 
     assert property (Reset)

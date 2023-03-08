@@ -14,8 +14,8 @@ class ClockDivider(SystemVerilogModule.SystemVerilogModule):
         if self.configuration_counter_type == "binary":
             content: str = f"""module ClockDivider #(
         parameter DOWN_SAMPLE_RATE = {self.configuration_down_sample_rate},
-        localparam EDGE_COUNTER_TOP_VALUE = (2 * DOWN_SAMPLE_RATE) - 1,
-        localparam CLOCK_COUNTER_OUTPUT_WIDTH = (DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil($clog2(2 * (DOWN_SAMPLE_RATE - 1))))
+        localparam EDGE_COUNTER_TOP_VALUE = DOWN_SAMPLE_RATE - 1,
+        localparam CLOCK_COUNTER_OUTPUT_WIDTH = (DOWN_SAMPLE_RATE == 1) ? 1 : int'($ceil($clog2(DOWN_SAMPLE_RATE - 1)))
     ) (
         input wire rst,
         input wire clk,
@@ -26,9 +26,9 @@ class ClockDivider(SystemVerilogModule.SystemVerilogModule):
     logic reset_executed;
     logic [CLOCK_COUNTER_OUTPUT_WIDTH : 0] edge_counter;
 
-    assign clock_divider_counter = edge_counter >> 1;
+    assign clock_divider_counter = edge_counter;
 
-    always_ff @(clk) begin
+    always_ff @(posedge clk) begin
         if(rst == 1'b1) begin
             reset_executed <= 1;
             edge_counter <= {{CLOCK_COUNTER_OUTPUT_WIDTH{{1'b0}}}};
