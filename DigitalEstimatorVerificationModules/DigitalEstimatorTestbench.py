@@ -38,6 +38,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_combinatorial_synchronous: str = "combinatorial"
     configuration_coefficients_variable_fixed: str = "variable"
     configuration_mapped_simulation: bool = False
+    configuration_synthesis_program: str = "genus"
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator
 
@@ -107,6 +108,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         content += """logic [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input;
     wire signed [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output;
     wire signal_estimation_valid_out;
+    wire clk_sample_shift_register;
 
 
     initial begin
@@ -176,7 +178,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         
         """
         else:
-            content += """@(posedge dut_digital_estimator.clk_sample_shift_register);
+            content += """@(posedge clk_sample_shift_register);
         repeat(DOWN_SAMPLE_RATE + 1) begin
             @(posedge clk);
         end
@@ -192,8 +194,13 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     end
 
     initial begin
-        static int digital_estimation_output_file = $fopen("./digital_estimation.csv", "w");
-        if(digital_estimation_output_file == 0) begin
+        """
+        if self.configuration_mapped_simulation == True:
+            content += f"""static int digital_estimation_output_file = $fopen("./digital_estimation_mapped_{self.configuration_synthesis_program}.csv", "w");"""
+        else:
+            content += """static int digital_estimation_output_file = $fopen("./digital_estimation.csv", "w");
+        """
+        content += """if(digital_estimation_output_file == 0) begin
             $error("Digital estimation output file could not be opened!");
             $finish;
         end
@@ -213,14 +220,14 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         """
         else:
             content += """repeat(4) begin
-            @(negedge dut_digital_estimator.clk_sample_shift_register);
+            @(negedge clk_sample_shift_register);
         end
         
         """
 
         if self.configuration_combinatorial_synchronous == "synchronous":
             content += """repeat(REGISTER_DELAY) begin
-            @(negedge dut_digital_estimator.clk_sample_shift_register);
+            @(negedge clk_sample_shift_register);
         end
         
         """
@@ -240,7 +247,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         """
         else:
             content += """
-            @(negedge dut_digital_estimator.clk_sample_shift_register);
+            @(negedge clk_sample_shift_register);
         """
         content += """end
     end
@@ -281,7 +288,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             """
         content += """.digital_control_input(digital_control_input),
             .signal_estimation_valid_out(signal_estimation_valid_out),
-            .signal_estimation_output(signal_estimation_output)
+            .signal_estimation_output(signal_estimation_output),
+            .clk_sample_shift_register(clk_sample_shift_register)
     );
 
 

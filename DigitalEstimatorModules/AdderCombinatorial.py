@@ -13,10 +13,10 @@ class AdderCombinatorial(SystemVerilogModule.SystemVerilogModule):
 		localparam OUTPUT_WIDTH = INPUT_WIDTH
 	) (
 		input rst,
-		input [INPUT_WIDTH - 1 : 0] input_0,
-		input [INPUT_WIDTH - 1 : 0] input_1,
+		input wire signed [INPUT_WIDTH - 1 : 0] input_0,
+		input wire signed [INPUT_WIDTH - 1 : 0] input_1,
 		//output logic [OUTPUT_WIDTH : 0] out
-		output logic [OUTPUT_WIDTH - 1 : 0] out
+		output logic signed [OUTPUT_WIDTH - 1 : 0] out
 );
 
 	always_comb begin

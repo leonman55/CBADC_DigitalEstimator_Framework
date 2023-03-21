@@ -4,6 +4,7 @@ import cbadc
 import matplotlib.mlab
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 
 
 def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lut_input_width: int) -> np.ndarray:
@@ -48,6 +49,12 @@ def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lu
     print("LUT entry list:\n", lut_entry_array)
     return lut_entry_array
 
+def get_coefficient_bit_mapping(coefficient_matrix: list[int]) -> np.ndarray:
+    bit_mapping: list[int] = list[int]()
+    for index in range(len(coefficient_matrix)):
+        bit_mapping.append(math.ceil(math.log2(abs(coefficient_matrix[index]) + 1)) + 1)
+    return bit_mapping
+
 
 def plot_results(path: str = "../df/sim/SystemVerilogFiles", k1: int = 512, k2: int = 512, size: int = 1 << 14, T: float = 2.0e-8, OSR: int = 1, down_sample_rate: int = 1):
     """Plots the results of the cbadc Python package simulation and the RTL simulation.
@@ -62,7 +69,7 @@ def plot_results(path: str = "../df/sim/SystemVerilogFiles", k1: int = 512, k2: 
     """
     digital_estimation_results: list[float] = list[float]()
     try:
-        with open(path + "/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
+        with open(path + "/digital_estimation.xrun.csv", "r") as system_verilog_simulation_csv_file:
             for line in system_verilog_simulation_csv_file.readlines():
                 digital_estimation_results.append(float(line.rsplit(",")[0]))
             system_verilog_simulation_csv_file.close()
@@ -189,6 +196,31 @@ def plot_results(path: str = "../df/sim/SystemVerilogFiles", k1: int = 512, k2: 
             plt.clf()
     except:
         pass
+
+def plot_mapped_psd(path: str = "../df/sim/SystemVerilogFiles", file_name: str = "digital_estimation_mapped_genus.csv", k1: int = 512, k2: int = 512, size: int = 1 << 14, T: float = 2.0e-8, OSR: int = 1, down_sample_rate: int = 1, synthesis_program: str = "genus"):
+    try:
+        mapped_simulation_results: list[float] = list[float]()
+        with open(path + "/" + file_name) as mapped_simulation_results_csv_file:
+            for line in mapped_simulation_results_csv_file.readlines():
+                mapped_simulation_results.append(float(line.rsplit(",")[0]))
+            with open(path + "/mapped_simulation_snr_db_" + synthesis_program + ".csv", "w") as mapped_simulation_snr_db_csv_file:
+                plt.xscale("log")
+                mapped_simulation_results_psd = plt.psd(mapped_simulation_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
+                maximum = np.max(mapped_simulation_results_psd[0])
+                noise = mapped_simulation_results_psd[0][np.where(mapped_simulation_results_psd[0] != maximum)]
+                noise_sum = np.sum(noise)
+                snr = maximum / noise_sum
+                snr_dB = 10 * np.log10(snr)
+                print("\tSNR dB " + synthesis_program + ": ", snr_dB)
+                mapped_simulation_snr_db_csv_file.write(str(snr_dB))
+                mapped_simulation_snr_db_csv_file.close()
+                plt.savefig(path + "/psd_log_" + synthesis_program + ".pdf")
+                plt.clf()
+                plt.psd(mapped_simulation_results_psd[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
+                plt.savefig(path + "/psd_linear_" + synthesis_program + ".pdf")
+                plt.clf()
+    except:
+        print("No gate level simulation PSD information available!")
 
 
 class DigitalEstimatorParameterGenerator():
@@ -867,7 +899,7 @@ class DigitalEstimatorParameterGenerator():
             than the set SNR. This is used for the automated quality
             assurance.
         """
-        with open(self.path + "/digital_estimation.csv", "r") as system_verilog_simulation_csv_file:
+        with open(self.path + "/digital_estimation.xrun.csv", "r") as system_verilog_simulation_csv_file:
             with open(self.path + "/digital_estimation_high_level.csv", "r") as high_level_simulation_csv_file:
                 with open(self.path + "/digital_estimation_system_verilog_vs_high_level.csv", "w") as comparison_csv_file:
                     system_verilog_simulation_results = system_verilog_simulation_csv_file.readlines()
@@ -929,6 +961,9 @@ class DigitalEstimatorParameterGenerator():
             to execute the plot_results function manually and automated.
         """
         plot_results(path = self.path, k1 = self.k1, k2 = self.k2, size = self.size, T = self.T, OSR = self.OSR, down_sample_rate = self.down_sample_rate)
+
+    def plot_results_mapped(self, file_name: str = "digital_estimation_mapped_genus.csv", synthesis_program: str = "genus"):
+        plot_mapped_psd(path = self.path, file_name = file_name, k1 = self.k1, k2 = self.k2, size = self.size, T = self.T, OSR = self.OSR, down_sample_rate = self.down_sample_rate, synthesis_program = synthesis_program)
                 
 
 if __name__ == '__main__':

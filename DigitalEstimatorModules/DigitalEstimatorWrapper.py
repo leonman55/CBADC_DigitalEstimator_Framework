@@ -58,11 +58,12 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         """
         if self.configuration_coefficients_variable_fixed == "variable":
             content += """input wire enable_lookup_table_coefficient_shift_in,
-        input wire [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_coefficient,
+        input wire signed [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_coefficient,
         """
         content += """input wire [M_NUMBER_DIGITAL_STATES - 1 : 0] digital_control_input,
         output logic signal_estimation_valid_out,
-        output logic [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output
+        output logic signed [OUTPUT_DATA_WIDTH - 1 : 0] signal_estimation_output,
+        output logic clk_sample_shift_register
 );
 
     logic internal_rst;
@@ -70,11 +71,11 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         if self.configuration_down_sample_rate > 1:
             content += f"""logic clk_downsample;
     """
-        content += f"""logic clk_sample_shift_register;
+        content += f"""//logic clk_sample_shift_register;
     logic [DOWN_SAMPLE_RATE - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] downsample_accumulate_output;
     logic [TOTAL_LOOKUP_REGISTER_LENGTH - 1 : 0][M_NUMBER_DIGITAL_STATES - 1 : 0] sample_shift_register;
-    wire [LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
-    wire [LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
+    wire signed [LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
+    wire signed [LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
     
     """
         if self.configuration_coefficients_variable_fixed == "variable":
@@ -124,8 +125,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     //assign lookahead_register = sample_shift_register[TOTAL_LOOKUP_REGISTER_LENGTH - 1 : LOOKBACK_SIZE];
     //assign lookahead_register = sample_shift_register[LOOKAHEAD_SIZE - 1 : 0];
 
-    logic [LOOKBACK_LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_results;
-    logic [LOOKAHEAD_LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_results;
+    logic signed [LOOKBACK_LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookback_lookup_table_results;
+    logic signed [LOOKAHEAD_LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_results;
 
     wire signed [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] adder_block_lookback_result;
     wire signed [LOOKUP_TABLE_DATA_WIDTH - 1 : 0] adder_block_lookahead_result;

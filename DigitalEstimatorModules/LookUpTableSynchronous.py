@@ -14,8 +14,8 @@ class LookUpTableSynchronous(SystemVerilogModule.SystemVerilogModule):
         input wire rst,
         input wire clk,
         input wire [INPUT_WIDTH - 1 : 0] in,
-        input wire [2**INPUT_WIDTH - 1 : 0][DATA_WIDTH - 1 : 0] memory,
-        output logic [DATA_WIDTH - 1 : 0] out
+        input wire signed [2**INPUT_WIDTH - 1 : 0][DATA_WIDTH - 1 : 0] memory,
+        output logic signed [DATA_WIDTH - 1 : 0] out
 );
 
     always_ff @(posedge clk) begin

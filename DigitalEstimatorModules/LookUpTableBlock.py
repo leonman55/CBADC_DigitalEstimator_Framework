@@ -16,8 +16,8 @@ class LookUpTableBlock(SystemVerilogModule.SystemVerilogModule):
     ) (
         input wire rst,
         input wire [TOTAL_INPUT_WIDTH - 1 : 0] input_register,
-        input wire [LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_entries,
-        output logic [LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_results
+        input wire signed [LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_entries,
+        output logic signed [LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_results
 );
 
     generate

@@ -13,9 +13,9 @@ class AdderSynchronous(SystemVerilogModule.SystemVerilogModule):
 	) (
 		input wire rst,
 		input wire clk,
-		input wire [INPUT_WIDTH - 1 : 0] input_0,
-		input wire [INPUT_WIDTH - 1 : 0] input_1,
-		output logic [OUTPUT_WIDTH - 1 : 0] out
+		input wire signed [INPUT_WIDTH - 1 : 0] input_0,
+		input wire signed [INPUT_WIDTH - 1 : 0] input_1,
+		output logic signed [OUTPUT_WIDTH - 1 : 0] out
 );
 
 	always_ff @(posedge clk) begin

@@ -14,8 +14,8 @@ class AdderBlockSynchronous(SystemVerilogModule.SystemVerilogModule):
     ) (
         input wire rst,
         input wire clk,
-        input wire [INPUT_COUNT - 1 : 0][INPUT_WIDTH - 1 : 0] in,
-        output reg [INPUT_WIDTH - 1 : 0] out
+        input wire signed [INPUT_COUNT - 1 : 0][INPUT_WIDTH - 1 : 0] in,
+        output logic signed [INPUT_WIDTH - 1 : 0] out
 );
 
     function automatic int GetTotalNumberOfIntermediateResults();
@@ -59,7 +59,7 @@ class AdderBlockSynchronous(SystemVerilogModule.SystemVerilogModule):
     generate
         localparam count_intermediate_results = GetTotalNumberOfIntermediateResults();
         //wire [count_intermediate_results - 1 : 0][INPUT_WIDTH + STAGE_COUNT - 1 : 0] adder_out;
-        logic [count_intermediate_results - 1 : 0][INPUT_WIDTH - 1 : 0] adder_out;
+        logic signed [count_intermediate_results - 1 : 0][INPUT_WIDTH - 1 : 0] adder_out;
         for(genvar stage_index = 1; stage_index <= STAGE_COUNT; stage_index++) begin
             localparam adder_input_offset = GetAdderInputOffset(stage_index);
             localparam adder_out_offset = GetAdderResultOffset(stage_index);
