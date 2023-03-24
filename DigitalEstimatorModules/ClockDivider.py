@@ -23,14 +23,14 @@ class ClockDivider(SystemVerilogModule.SystemVerilogModule):
         output reg [CLOCK_COUNTER_OUTPUT_WIDTH - 1 : 0] clock_divider_counter
 );
 
-    logic reset_executed;
+    //logic reset_executed;
     logic [CLOCK_COUNTER_OUTPUT_WIDTH : 0] edge_counter;
 
     assign clock_divider_counter = edge_counter;
 
     always_ff @(posedge clk) begin
         if(rst == 1'b1) begin
-            reset_executed <= 1;
+            //reset_executed <= 1;
             edge_counter <= {{CLOCK_COUNTER_OUTPUT_WIDTH{{1'b0}}}};
         end
         else begin
@@ -38,10 +38,11 @@ class ClockDivider(SystemVerilogModule.SystemVerilogModule):
                 edge_counter <= {{CLOCK_COUNTER_OUTPUT_WIDTH{{1'b0}}}};
             end
             else begin
-                if(reset_executed == 1'b1 && clk == 1'b1 || reset_executed == 1'b0) begin
-                    reset_executed <= 1'b0;
-                    edge_counter <= edge_counter + 1;
-                end
+                //if(reset_executed == 1'b1 && clk == 1'b1 || reset_executed == 1'b0) begin
+                //    reset_executed <= 1'b0;
+                //    edge_counter <= edge_counter + 1;
+                //end
+                edge_counter <= edge_counter + 1;
             end
         end
     end

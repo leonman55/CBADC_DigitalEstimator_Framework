@@ -9,6 +9,7 @@ import math
 import numpy as np
 import shutil
 import gzip
+import statistics
 
 import FileGenerator
 import SystemVerilogSignal
@@ -106,24 +107,29 @@ class DigitalEstimatorGenerator():
     """
 
     #path: str = "../df/sim/SystemVerilogFiles"
-    path: str = "/local_work/leonma/sim/SystemVerilogFiles2"
+    path: str = "/local_work/leonma/sim/SystemVerilogFiles5"
     #path_synthesis: str = "../df/src/SystemVerilogFiles"
-    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles2"
+    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles5"
 
     scripts_base_folder = "../df/scripts"
 
 
     configuration_number_of_timesteps_in_clock_cycle: int = 10
     configuration_n_number_of_analog_states: int = 2
+    #configuration_n_number_of_analog_states: int = 7
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
     configuration_lookback_length: int = 128
+    #configuration_lookback_length: int = 512
     configuration_lookahead_length: int = 128
+    #configuration_lookahead_length: int = 512
     configuration_fir_data_width: int = 21
+    #configuration_fir_data_width: int = 28
     configuration_fir_lut_input_width: int = 4
     configuration_simulation_length: int = 1 << 12
     configuration_over_sample_rate: int = 32
+    #configuration_over_sample_rate: int = 11
     configuration_down_sample_rate: int = configuration_over_sample_rate
-    configuration_counter_type: str = "gray"
+    configuration_counter_type: str = "binary"
     configuration_combinatorial_synchronous: str = "synchronous"
     configuration_required_snr_db: float = 55
     configuration_coefficients_variable_fixed: str = "fixed"
@@ -801,23 +807,31 @@ if __name__ == '__main__':
     digital_estimator_generator: DigitalEstimatorGenerator = DigitalEstimatorGenerator()
     digital_estimator_generator.generate()
     #simulation_result: tuple[int, str] = (0, "Skip simulation.")
-    simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
-    digital_estimator_generator.simulate_vcs()
-    if simulation_result[0] == 0:
+    #simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
+    #simulation_result: tuple[int, str] = (0, "Ignore fails in simulation.")
+    #digital_estimator_generator.simulate_vcs()
+    #if simulation_result[0] == 0:
     #    pass
-        digital_estimator_generator.copy_design_files_for_synthesis()
-        digital_estimator_generator.write_synthesis_scripts_genus()
-        digital_estimator_generator.synthesize_genus()
-        digital_estimator_generator.write_synthesis_scripts_synopsys()
-        digital_estimator_generator.synthesize_synopsys()
-        digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
-        digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
-        digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus")
-        digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
-        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
-        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
+    #    digital_estimator_generator.copy_design_files_for_synthesis()
+    #    digital_estimator_generator.write_synthesis_scripts_genus()
+    #    digital_estimator_generator.synthesize_genus()
+    #    digital_estimator_generator.write_synthesis_scripts_synopsys()
+    #    digital_estimator_generator.synthesize_synopsys()
+    #    digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
+    #    digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
+    #    digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus")
+    #    digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
+    #    digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
+    #    digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
 
-    #lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(digital_estimator_generator.high_level_simulation.fir_hb_matrix, digital_estimator_generator.configuration_fir_lut_input_width)
-    #lookback_lut_entries_bit_mapping = CBADC_HighLevelSimulation.get_coefficient_bit_mapping(lookback_lut_entries)
-    #print(lookback_lut_entries)
-    #print(lookback_lut_entries_bit_mapping)
+    lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(digital_estimator_generator.high_level_simulation.fir_hb_matrix, digital_estimator_generator.configuration_fir_lut_input_width)
+    lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = digital_estimator_generator.configuration_fir_lut_input_width)
+    lookback_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookback_lut_entries_bit_mapping[0])
+    lookback_lut_entries_max_widths_average = statistics.mean(lookback_lut_entries_max_widths)
+    print(lookback_lut_entries)
+    print(lookback_lut_entries_bit_mapping[0])
+    print(lookback_lut_entries_max_widths)
+    print("Average bit width: ", lookback_lut_entries_bit_mapping[1])
+    print("Possible savings on registers with average bit width: ", str(100.0 * (digital_estimator_generator.configuration_fir_data_width - lookback_lut_entries_bit_mapping[1]) / digital_estimator_generator.configuration_fir_data_width), "%")
+    print("Average maximum bit width: ", lookback_lut_entries_max_widths_average)
+    print("Possible savings on registers with average maximum bit width: ", str(100.0 * (digital_estimator_generator.configuration_fir_data_width - lookback_lut_entries_max_widths_average) / digital_estimator_generator.configuration_fir_data_width), "%")

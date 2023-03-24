@@ -1,10 +1,11 @@
-from math import ceil
-
 import cbadc
 import matplotlib.mlab
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+
+from math import ceil
+from collections.abc import Iterable
 
 
 def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lut_input_width: int) -> np.ndarray:
@@ -49,11 +50,29 @@ def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lu
     print("LUT entry list:\n", lut_entry_array)
     return lut_entry_array
 
-def get_coefficient_bit_mapping(coefficient_matrix: list[int]) -> np.ndarray:
-    bit_mapping: list[int] = list[int]()
-    for index in range(len(coefficient_matrix)):
-        bit_mapping.append(math.ceil(math.log2(abs(coefficient_matrix[index]) + 1)) + 1)
-    return bit_mapping
+def get_lut_entry_bit_mapping(lut_entry_matrix: list[int], lut_input_width: int = 4) -> tuple[list[list[int]], int]:
+    bit_mapping: list[list[int]] = list[list[int]]()
+    average_bit_width: int = 0
+    single_lut_bit_mapping: list[int] = list[int]()
+    for index in range(len(lut_entry_matrix)):
+        entry_bit_width: int = math.ceil(math.log2(abs(lut_entry_matrix[len(lut_entry_matrix) - 1 - index]) + 1)) + 1
+        average_bit_width += entry_bit_width
+        single_lut_bit_mapping.append(entry_bit_width)
+        if ((index % (2**lut_input_width )) == ((2**lut_input_width) - 1)) or (index == len(lut_entry_matrix) - 1):
+            bit_mapping.insert(0, single_lut_bit_mapping)
+            single_lut_bit_mapping = list[int]()
+    average_bit_width /= len(lut_entry_matrix)
+    return bit_mapping, average_bit_width
+
+def get_maximum_bitwidth_per_lut(bit_mapping: list[list[int]]) -> list[int]:
+    max_bit_widths: list[int] = list[int]()
+    for lut in bit_mapping:
+        max: int = 0
+        for entry in lut:
+            if entry > max:
+                max = entry
+        max_bit_widths.append(max)
+    return max_bit_widths
 
 
 def plot_results(path: str = "../df/sim/SystemVerilogFiles", k1: int = 512, k2: int = 512, size: int = 1 << 14, T: float = 2.0e-8, OSR: int = 1, down_sample_rate: int = 1):

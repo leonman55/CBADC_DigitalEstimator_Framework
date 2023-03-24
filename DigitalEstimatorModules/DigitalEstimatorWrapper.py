@@ -66,7 +66,6 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
         output logic clk_sample_shift_register
 );
 
-    logic internal_rst;
     """
         if self.configuration_down_sample_rate > 1:
             content += f"""logic clk_downsample;
@@ -78,18 +77,12 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     wire signed [LOOKAHEAD_LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
     
     """
-        if self.configuration_coefficients_variable_fixed == "variable":
-            content += """assign internal_rst = rst | enable_lookup_table_coefficient_shift_in;
-    """
-        elif self.configuration_coefficients_variable_fixed == "fixed":
-            content += """assign internal_rst = rst;
-    """
         if self.configuration_down_sample_rate > 1:
-            content += f"""assign clk_sample_shift_register = clk_downsample | internal_rst;
+            content += f"""assign clk_sample_shift_register = clk_downsample;
     
     """
         else:
-            content += f"""assign clk_sample_shift_register = clk | internal_rst;
+            content += f"""assign clk_sample_shift_register = clk;
     
     """
         if self.configuration_coefficients_variable_fixed == "fixed":
@@ -102,7 +95,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     """
         content += """
     always_ff @(posedge clk_sample_shift_register) begin
-        if(internal_rst == 1'b1) begin
+        if(rst == 1'b1) begin
             sample_shift_register <= {{(M_NUMBER_DIGITAL_STATES * TOTAL_LOOKUP_REGISTER_LENGTH) - 1{{1'b0}}}};
         end
         else begin
@@ -163,7 +156,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .DOWN_SAMPLE_RATE(DOWN_SAMPLE_RATE)
         )
         clock_divider (
-            .rst(internal_rst),
+            .rst(rst),
             .clk(clk),
             .clk_downsample(clk_downsample),
             .clock_divider_counter()
@@ -175,7 +168,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .DATA_WIDTH(M_NUMBER_DIGITAL_STATES)
         )
         input_downsample_accumulate_register (
-            .rst(internal_rst),
+            .rst(rst),
             .clk(clk),
             .in(digital_control_input),
             .out(downsample_accumulate_output)
@@ -189,7 +182,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         lookback_lookup_table_block (
-            .rst(internal_rst),
+            .rst(rst),
             .input_register(lookback_register),
             .lookup_table_entries(lookback_lookup_table_entries),
             .lookup_table_results(lookback_lookup_table_results)
@@ -200,7 +193,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         adder_block_lookback (
-            .rst(internal_rst),
+            .rst(rst),
             .in(lookback_lookup_table_results),
             .out(adder_block_lookback_result)
     );
@@ -211,7 +204,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         lookahead_lookup_table_block (
-            .rst(internal_rst),
+            .rst(rst),
             .input_register(lookahead_register),
             .lookup_table_entries(lookahead_lookup_table_entries),
             .lookup_table_results(lookahead_lookup_table_results)
@@ -222,7 +215,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         adder_block_lookahead (
-            .rst(internal_rst),
+            .rst(rst),
             .in(lookahead_lookup_table_results),
             .out(adder_block_lookahead_result)
     );
@@ -235,8 +228,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         lookback_lookup_table_block (
-            .rst(internal_rst),
-            .clk(clk_downsample | internal_rst),
+            .rst(rst),
+            .clk(clk_downsample),
             .input_register(lookback_register),
             .lookup_table_entries(lookback_lookup_table_entries),
             .lookup_table_results(lookback_lookup_table_results)
@@ -247,8 +240,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         adder_block_lookback (
-            .rst(internal_rst),
-            .clk(clk_downsample | internal_rst),
+            .rst(rst),
+            .clk(clk_downsample),
             .in(lookback_lookup_table_results),
             .out(adder_block_lookback_result)
     );
@@ -259,8 +252,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         lookahead_lookup_table_block (
-            .rst(internal_rst),
-            .clk(clk_downsample | internal_rst),
+            .rst(rst),
+            .clk(clk_downsample),
             .input_register(lookahead_register),
             .lookup_table_entries(lookahead_lookup_table_entries),
             .lookup_table_results(lookahead_lookup_table_results)
@@ -271,8 +264,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
         adder_block_lookahead (
-            .rst(internal_rst),
-            .clk(clk_downsample | internal_rst),
+            .rst(rst),
+            .clk(clk_downsample),
             .in(lookahead_lookup_table_results),
             .out(adder_block_lookahead_result)
     );
@@ -283,7 +276,7 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .TOP_VALUE(LOOKBACK_SIZE + LOOKAHEAD_SIZE)
         )
         valid_counter (
-            .rst(internal_rst),
+            .rst(rst),
             .clk(clk),
             .valid(signal_estimation_valid_out)
     );

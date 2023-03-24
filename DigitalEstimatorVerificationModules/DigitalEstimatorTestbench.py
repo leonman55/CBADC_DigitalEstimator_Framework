@@ -204,6 +204,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             $error("Digital estimation output file could not be opened!");
             $finish;
         end
+        $fwrite(digital_estimation_output_file, "0.0, 0.0, 0.0\\n");
 
         """
         if self.configuration_coefficients_variable_fixed == "variable":
