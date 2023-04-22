@@ -79,6 +79,17 @@ def ndarray_to_system_verilog_array(input_array: ndarray) -> str:
     print("System Verilog array: \n", array_string)
     return array_string
 
+def ndarray_to_system_verilog_concatenation(input_array: list[list[int]], array_bit_widths: list[tuple[int, int]]) -> str:
+    system_verilog_concatenation: str = "{"
+    for lut_index in range(len(input_array)):
+        for element_index in range(len(input_array[lut_index])):
+            if input_array[lut_index][element_index] < 0:
+                system_verilog_concatenation += "-"
+            system_verilog_concatenation += str(array_bit_widths[lut_index][0]) + "'d" + str(abs(input_array[lut_index][element_index])) + ", "
+    system_verilog_concatenation = system_verilog_concatenation.removesuffix(", ")
+    system_verilog_concatenation += "}"
+    return system_verilog_concatenation
+        
 
 class SystemVerilogSyntaxGenerator:
     output: FileGenerator.FileGenerator = None

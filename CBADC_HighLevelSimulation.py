@@ -50,6 +50,17 @@ def convert_coefficient_matrix_to_lut_entries(coefficient_matrix: np.ndarray, lu
     print("LUT entry list:\n", lut_entry_array)
     return lut_entry_array
 
+def map_lut_entries_to_luts(lut_entries: list[int], lut_input_width: int) -> list[list[int]]:
+    lut_entries_mapped: list[list[int]] = list[list[int]]()
+    single_lut_entry_mapping: list[int] = list[int]()
+    for index in range(len(lut_entries)):
+        single_lut_entry_mapping.append(lut_entries[index])
+        if ((index % (2**lut_input_width)) == ((2**lut_input_width) - 1)) or (index == len(lut_entries) - 1):
+            #lut_entries_mapped.insert(0, single_lut_entry_mapping)
+            lut_entries_mapped.append(single_lut_entry_mapping)
+            single_lut_entry_mapping = list[int]()
+    return lut_entries_mapped
+
 def get_lut_entry_bit_mapping(lut_entry_matrix: list[int], lut_input_width: int = 4) -> tuple[list[list[int]], int]:
     bit_mapping: list[list[int]] = list[list[int]]()
     average_bit_width: int = 0
@@ -58,7 +69,7 @@ def get_lut_entry_bit_mapping(lut_entry_matrix: list[int], lut_input_width: int 
         entry_bit_width: int = math.ceil(math.log2(abs(lut_entry_matrix[len(lut_entry_matrix) - 1 - index]) + 1)) + 1
         average_bit_width += entry_bit_width
         single_lut_bit_mapping.append(entry_bit_width)
-        if ((index % (2**lut_input_width )) == ((2**lut_input_width) - 1)) or (index == len(lut_entry_matrix) - 1):
+        if ((index % (2**lut_input_width)) == ((2**lut_input_width) - 1)) or (index == len(lut_entry_matrix) - 1):
             bit_mapping.insert(0, single_lut_bit_mapping)
             single_lut_bit_mapping = list[int]()
     average_bit_width /= len(lut_entry_matrix)
@@ -73,6 +84,23 @@ def get_maximum_bitwidth_per_lut(bit_mapping: list[list[int]]) -> list[int]:
                 max = entry
         max_bit_widths.append(max)
     return max_bit_widths
+
+def sort_luts_by_size(lut_bit_widths: list[int]) -> list[tuple[int, int]]:
+    new_lut_order: list[tuple[int, int]] = list[tuple[int, int]]()
+    for index in range(len(lut_bit_widths)):
+        new_lut_order.append((lut_bit_widths[index], index))
+    number_of_luts = len(new_lut_order)
+    for pass_number in range(number_of_luts):
+        for element_index in range(0, number_of_luts - pass_number - 1):
+            if new_lut_order[element_index][0] > new_lut_order[element_index + 1][0]:
+                new_lut_order[element_index], new_lut_order[element_index + 1] = new_lut_order[element_index + 1], new_lut_order[element_index]
+    return new_lut_order
+
+def reorder_lut_entries(lut_entries: list[list[int]], new_order: list[tuple[int, int]]) -> list[list[int]]:
+    reordered_lut_entries: list[list[int]] = list[list[int]]()
+    for entry in new_order:
+        reordered_lut_entries.append(lut_entries[entry[1]].copy())
+    return reordered_lut_entries
 
 
 def plot_results(path: str = "../df/sim/SystemVerilogFiles", k1: int = 512, k2: int = 512, size: int = 1 << 14, T: float = 2.0e-8, OSR: int = 1, down_sample_rate: int = 1):

@@ -13,6 +13,7 @@ from SystemVerilogSyntaxGenerator import set_parameter_value_by_parameter
 from SystemVerilogSyntaxGenerator import connect_port_array
 from SystemVerilogSyntaxGenerator import decimal_number
 from SystemVerilogSyntaxGenerator import ndarray_to_system_verilog_array
+from SystemVerilogSyntaxGenerator import ndarray_to_system_verilog_concatenation
 from SystemVerilogComparisonOperator import *
 import CBADC_HighLevelSimulation
 
@@ -39,6 +40,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_coefficients_variable_fixed: str = "variable"
     configuration_mapped_simulation: bool = False
     configuration_synthesis_program: str = "genus"
+    configuration_reduce_size: bool = False
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator
 
@@ -66,6 +68,27 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         #    size = self.configuration_simulation_length
         #)
         self.high_level_simulation.simulate_digital_estimator_fir()
+        
+        if self.configuration_reduce_size == True:
+            lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hb_matrix, self.configuration_fir_lut_input_width)
+            lookback_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+            lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+            lookback_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookback_lut_entries_bit_mapping[0])
+            lookback_lut_entries_max_widths_sorted: list[tuple[int, int]] = CBADC_HighLevelSimulation.sort_luts_by_size(lookback_lut_entries_max_widths)
+            lookback_lut_entries_mapped_reordered: list[list[int]] = CBADC_HighLevelSimulation.reorder_lut_entries(lookback_lut_entries_mapped, lookback_lut_entries_max_widths_sorted)
+            lookahead_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hf_matrix, self.configuration_fir_lut_input_width)
+            lookahead_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookahead_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+            lookahead_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookahead_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+            lookahead_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookahead_lut_entries_bit_mapping[0])
+            lookahead_lut_entries_max_widths_sorted: list[tuple[int, int]] = CBADC_HighLevelSimulation.sort_luts_by_size(lookahead_lut_entries_max_widths)
+            lookahead_lut_entries_mapped_reordered: list[list[int]] = CBADC_HighLevelSimulation.reorder_lut_entries(lookahead_lut_entries_mapped, lookahead_lut_entries_max_widths_sorted)
+            maximum_data_width: int = 0
+            for entry in lookback_lut_entries_max_widths_sorted:
+                if maximum_data_width < entry[0]:
+                    maximum_data_width = entry[0]
+            for entry in lookahead_lut_entries_max_widths_sorted:
+                if maximum_data_width < entry[0]:
+                    maximum_data_width = entry[0]
 
         content: str = f"""module DigitalEstimatorTestbench #(
     parameter CLOCK_PERIOD = 10,
@@ -99,8 +122,15 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     """
         if self.configuration_coefficients_variable_fixed == "variable":
             content += """logic enable_lookup_table_coefficient_shift_in;
-    logic [OUTPUT_DATA_WIDTH - 1 : 0] lookup_table_coefficient;
-    //logic [(LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookback_lookup_table_entries;
+    """
+            if self.configuration_reduce_size == True:
+                content += f"""logic lookup_table_coefficient_shift_in_lookback_lookahead_switch;
+    logic [{maximum_data_width} - 1 : 0] lookup_table_coefficient;
+    """
+            elif self.configuration_reduce_size == False:
+                content += """logic [OUTPUT_DATA_WIDTH - 1 : 0] lookup_table_coefficient;
+    """
+            content += """//logic [(LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookback_lookup_table_entries;
     logic [LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookback_lookup_table_entries;
     //logic [(LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookahead_lookup_table_entries;
     logic [LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT - 1 : 0][OUTPUT_DATA_WIDTH - 1 : 0] lookahead_lookup_table_entries;
@@ -110,6 +140,10 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     wire signal_estimation_valid_out;
     wire clk_sample_shift_register;
 
+
+    initial begin
+        $assertoff;
+    end
 
     initial begin
         rst = 1'b1;
@@ -130,13 +164,22 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         if self.configuration_coefficients_variable_fixed == "variable":
             content += """initial begin
         enable_lookup_table_coefficient_shift_in = 1'b0;
-        lookup_table_coefficient = {OUTPUT_DATA_WIDTH{1'b0}};
+        """
+            if self.configuration_reduce_size == True:
+                content += """lookup_table_coefficient_shift_in_lookback_lookahead_switch = 1'b0;
+        """
+            content += """lookup_table_coefficient = {OUTPUT_DATA_WIDTH{1'b0}};
 
         @(negedge rst);
 
         enable_lookup_table_coefficient_shift_in = 1'b1;
-
-        $info("Starting coefficient shift in.\\n");
+        
+        """
+            if self.configuration_reduce_size == True:
+                content += """lookup_table_coefficient_shift_in_lookback_lookahead_switch = 1'b1;
+                
+        """
+            content += """$info("Starting coefficient shift in.\\n");
 
         for(integer lookahead_index = LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT - 1; lookahead_index >= 0; lookahead_index--) begin
         //for(integer lookahead_index = 0; lookahead_index <= LOOKAHEAD_LOOKUP_TABLE_ENTRY_COUNT - 1; lookahead_index++) begin
@@ -144,7 +187,12 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             @(negedge clk);
         end
         
-        for(integer lookback_index = LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1; lookback_index >= 0; lookback_index--) begin
+        """
+            if self.configuration_reduce_size == True:
+                content += """lookup_table_coefficient_shift_in_lookback_lookahead_switch = 1'b0;
+                
+        """
+            content += """for(integer lookback_index = LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1; lookback_index >= 0; lookback_index--) begin
         //for(integer lookback_index = 0; lookback_index <= LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT - 1; lookback_index++) begin
             lookup_table_coefficient = lookback_lookup_table_entries[lookback_index];
             @(negedge clk);
@@ -204,7 +252,12 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             $error("Digital estimation output file could not be opened!");
             $finish;
         end
-        $fwrite(digital_estimation_output_file, "0.0, 0.0, 0.0\\n");
+        
+        """
+        if self.configuration_reduce_size == True:
+            content += """$fwrite(digital_estimation_output_file, "0.0, 0.0, 0.0\\n");
+        """
+        content += """$fwrite(digital_estimation_output_file, "0.0, 0.0, 0.0\\n");
 
         """
         if self.configuration_coefficients_variable_fixed == "variable":
@@ -256,12 +309,34 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     """
         
         if self.configuration_coefficients_variable_fixed == "variable":
-            content += """initial begin
+            if self.configuration_reduce_size == False:
+                content += """initial begin
         lookback_lookup_table_entries = """
-            content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\n\t\t"
-            content += "lookahead_lookup_table_entries = "
-            content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n"
-            content += f"""\tend
+                content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\t\t"
+                content += "lookahead_lookup_table_entries = "
+                content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookahead_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n"
+                content += f"""\tend
+    
+    """
+            elif self.configuration_reduce_size == True:
+                lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hb_matrix, self.configuration_fir_lut_input_width)
+                lookback_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+                lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+                lookback_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookback_lut_entries_bit_mapping[0])
+                lookback_lut_entries_max_widths_sorted: list[tuple[int, int]] = CBADC_HighLevelSimulation.sort_luts_by_size(lookback_lut_entries_max_widths)
+                lookback_lut_entries_mapped_reordered: list[list[int]] = CBADC_HighLevelSimulation.reorder_lut_entries(lookback_lut_entries_mapped, lookback_lut_entries_max_widths_sorted)
+                lookahead_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hf_matrix, self.configuration_fir_lut_input_width)
+                lookahead_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookahead_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+                lookahead_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookahead_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+                lookahead_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookahead_lut_entries_bit_mapping[0])
+                lookahead_lut_entries_max_widths_sorted: list[tuple[int, int]] = CBADC_HighLevelSimulation.sort_luts_by_size(lookahead_lut_entries_max_widths)
+                lookahead_lut_entries_mapped_reordered: list[list[int]] = CBADC_HighLevelSimulation.reorder_lut_entries(lookahead_lut_entries_mapped, lookahead_lut_entries_max_widths_sorted)
+                content += """initial begin
+        lookback_lookup_table_entries = '"""
+                content += ndarray_to_system_verilog_concatenation(lookback_lut_entries_mapped_reordered, lookback_lut_entries_max_widths_sorted) + ";\n\t\t"
+                content += "lookahead_lookup_table_entries = '"
+                content += ndarray_to_system_verilog_concatenation(lookahead_lut_entries_mapped_reordered, lookahead_lut_entries_max_widths_sorted) + ";\n"
+                content += f"""\tend
     
     """
 
@@ -285,7 +360,11 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             """
         if self.configuration_coefficients_variable_fixed == "variable":
             content += """.enable_lookup_table_coefficient_shift_in(enable_lookup_table_coefficient_shift_in),
-            .lookup_table_coefficient(lookup_table_coefficient),
+            """
+            if self.configuration_reduce_size == True:
+                content += """.lookup_table_coefficient_shift_in_lookback_lookahead_switch(lookup_table_coefficient_shift_in_lookback_lookahead_switch),
+            """
+            content += """.lookup_table_coefficient(lookup_table_coefficient),
             """
         content += """.digital_control_input(digital_control_input),
             .signal_estimation_valid_out(signal_estimation_valid_out),
@@ -376,7 +455,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             .out(out)
     );
 
-    bind LookUpTableBlockSynchronous LookUpTableBlockSynchronousAssertions #(
+"""     
+        if self.configuration_reduce_size == False:
+            content += """\tbind LookUpTableBlockSynchronous LookUpTableBlockSynchronousAssertions #(
             .TOTAL_INPUT_WIDTH(TOTAL_INPUT_WIDTH),
             .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)

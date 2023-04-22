@@ -2,6 +2,7 @@ import SystemVerilogModule
 
 
 class LookUpTableBlockSynchronous(SystemVerilogModule.SystemVerilogModule):
+    configuration_reduce_size: bool = False
 
     def __init__(self, path: str, name: str):
         super().__init__(path, name)
@@ -17,8 +18,14 @@ class LookUpTableBlockSynchronous(SystemVerilogModule.SystemVerilogModule):
         input wire rst,
         input wire clk,
         input wire [TOTAL_INPUT_WIDTH - 1 : 0] input_register,
-        input wire signed [LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_entries,
-        output logic signed [LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_results
+        """
+        if self.configuration_reduce_size == False:
+            content += """input wire signed [LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_entries,
+        """
+        elif self.configuration_reduce_size == True:
+            content += """input wire signed [LOOKUP_TABLE_ENTRIES_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_entries,
+        """
+        content += """output logic signed [LOOKUP_TABLE_COUNT - 1 : 0][LOOKUP_TABLE_DATA_WIDTH - 1 : 0] lookup_table_results
 );
 
     generate

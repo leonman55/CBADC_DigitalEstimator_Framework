@@ -107,9 +107,9 @@ class DigitalEstimatorGenerator():
     """
 
     #path: str = "../df/sim/SystemVerilogFiles"
-    path: str = "/local_work/leonma/sim/SystemVerilogFiles5"
+    path: str = "/local_work/leonma/sim/SystemVerilogFiles7"
     #path_synthesis: str = "../df/src/SystemVerilogFiles"
-    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles5"
+    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles7"
 
     scripts_base_folder = "../df/scripts"
 
@@ -132,7 +132,8 @@ class DigitalEstimatorGenerator():
     configuration_counter_type: str = "binary"
     configuration_combinatorial_synchronous: str = "synchronous"
     configuration_required_snr_db: float = 55
-    configuration_coefficients_variable_fixed: str = "fixed"
+    configuration_coefficients_variable_fixed: str = "variable"
+    configuration_reduce_size: bool = True
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = None
 
@@ -171,6 +172,21 @@ class DigitalEstimatorGenerator():
         self.high_level_simulation.write_control_signal_to_csv_file(self.high_level_simulation.simulate_analog_system())
 
         self.top_module_name = "DigitalEstimator_" + str(self.configuration_n_number_of_analog_states) + "_" + str(self.configuration_over_sample_rate) + "_" + str(self.configuration_fir_data_width) + "_" + str(self.configuration_lookback_length) + "_" + str(self.configuration_lookahead_length) + "_" + str(self.configuration_fir_lut_input_width) + "_" + str(self.configuration_coefficients_variable_fixed)
+        
+        lookback_lut_entries = None
+        lookback_lut_entries_mapped = None
+        lookback_lut_entries_bit_mapping = None
+        lookback_lut_entries_max_widths = None
+        lookback_lut_entries_max_widths_average = None
+        lookback_lut_entries_max_widths_sorted = None
+        lookback_lut_entries_mapped_reordered = None
+        lookahead_lut_entries = None
+        lookahead_lut_entries_mapped = None
+        lookahead_lut_entries_bit_mapping = None
+        lookahead_lut_entries_max_widths = None
+        lookahead_lut_entries_max_widths_average = None
+        lookahead_lut_entries_max_widths_sorted = None
+        lookahead_lut_entries_mapped_reordered = None
 
         digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, "DigitalEstimatorTestbench")
         digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = self.configuration_number_of_timesteps_in_clock_cycle
@@ -189,8 +205,45 @@ class DigitalEstimatorGenerator():
         digital_estimator_testbench.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
         digital_estimator_testbench.configuration_mapped_simulation = False
         digital_estimator_testbench.top_module_name = self.top_module_name
+        digital_estimator_testbench.configuration_reduce_size = self.configuration_reduce_size
         digital_estimator_testbench.generate()
         self.simulation_module_list.append(digital_estimator_testbench)
+        
+        if self.configuration_reduce_size == True:
+            lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hb_matrix, self.configuration_fir_lut_input_width)
+            lookback_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+            lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+            lookback_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookback_lut_entries_bit_mapping[0])
+            lookback_lut_entries_max_widths_average = statistics.mean(lookback_lut_entries_max_widths)
+            lookback_lut_entries_max_widths_sorted: list[tuple[int, int]] = CBADC_HighLevelSimulation.sort_luts_by_size(lookback_lut_entries_max_widths)
+            lookback_lut_entries_mapped_reordered: list[list[int]] = CBADC_HighLevelSimulation.reorder_lut_entries(lookback_lut_entries_mapped, lookback_lut_entries_max_widths_sorted)
+            print("LUT entries: \n", lookback_lut_entries)
+            print("Mapped LUT entries: \n", lookback_lut_entries_mapped)
+            print("LUT entry bit mapping: \n", lookback_lut_entries_bit_mapping[0])
+            print("Maximum widths per LUT: \n", lookback_lut_entries_max_widths)
+            print("Average bit width: ", lookback_lut_entries_bit_mapping[1])
+            print("Possible savings on registers with average bit width: ", str(100.0 * (self.configuration_fir_data_width - lookback_lut_entries_bit_mapping[1]) / self.configuration_fir_data_width), "%")
+            print("Average bit width: ", lookback_lut_entries_max_widths_average)
+            print("Possible savings on registers with average maximum bit width: ", str(100.0 * (self.configuration_fir_data_width - lookback_lut_entries_max_widths_average) / self.configuration_fir_data_width), "%")
+            print("Sorted maximum widhts per LUT: \n", lookback_lut_entries_max_widths_sorted)
+            print("Reordered mapped LUT entries: \n", lookback_lut_entries_mapped_reordered)
+            lookahead_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hf_matrix, self.configuration_fir_lut_input_width)
+            lookahead_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookahead_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+            lookahead_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookahead_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
+            lookahead_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookahead_lut_entries_bit_mapping[0])
+            lookahead_lut_entries_max_widths_average = statistics.mean(lookahead_lut_entries_max_widths)
+            lookahead_lut_entries_max_widths_sorted: list[tuple[int, int]] = CBADC_HighLevelSimulation.sort_luts_by_size(lookahead_lut_entries_max_widths)
+            lookahead_lut_entries_mapped_reordered: list[list[int]] = CBADC_HighLevelSimulation.reorder_lut_entries(lookahead_lut_entries_mapped, lookahead_lut_entries_max_widths_sorted)
+            print("LUT entries: \n", lookahead_lut_entries)
+            print("Mapped LUT entries: \n", lookahead_lut_entries_mapped)
+            print("LUT entry bit mapping: \n", lookahead_lut_entries_bit_mapping[0])
+            print("Maximum widths per LUT: \n", lookahead_lut_entries_max_widths)
+            print("Average bit width: ", lookahead_lut_entries_bit_mapping[1])
+            print("Possible savings on registers with average bit width: ", str(100.0 * (self.configuration_fir_data_width - lookahead_lut_entries_bit_mapping[1]) / self.configuration_fir_data_width), "%")
+            print("Average bit width: ", lookahead_lut_entries_max_widths_average)
+            print("Possible savings on registers with average maximum bit width: ", str(100.0 * (self.configuration_fir_data_width - lookahead_lut_entries_max_widths_average) / self.configuration_fir_data_width), "%")
+            print("Sorted maximum widhts per LUT: \n", lookahead_lut_entries_max_widths_sorted)
+            print("Reordered mapped LUT entries: \n", lookahead_lut_entries_mapped_reordered)
 
         digital_estimator: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.DigitalEstimatorWrapper.DigitalEstimatorWrapper(self.path, "DigitalEstimator")
         digital_estimator.configuration_n_number_of_analog_states = self.configuration_n_number_of_analog_states
@@ -202,7 +255,13 @@ class DigitalEstimatorGenerator():
         digital_estimator.configuration_down_sample_rate = self.configuration_down_sample_rate
         digital_estimator.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
         digital_estimator.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
+        digital_estimator.configuration_reduce_size = self.configuration_reduce_size
         digital_estimator.high_level_simulation = self.high_level_simulation
+        if self.configuration_reduce_size == True:
+            digital_estimator.lookback_mapped_reordered_lut_entries = lookback_lut_entries_mapped_reordered
+            digital_estimator.lookback_mapped_reordered_bit_widths = lookback_lut_entries_max_widths_sorted
+            digital_estimator.lookahead_mapped_reordered_lut_entries = lookahead_lut_entries_mapped_reordered
+            digital_estimator.lookahead_mapped_reordered_bit_widths = lookahead_lut_entries_max_widths_sorted
         digital_estimator.module_name = self.top_module_name
         digital_estimator.generate()
         self.module_list.append(digital_estimator)
@@ -268,6 +327,14 @@ class DigitalEstimatorGenerator():
         if self.configuration_coefficients_variable_fixed == "variable":
             lookup_table_coefficient_register: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableCoefficientRegister.LookUpTableCoefficientRegister(self.path, "LookUpTableCoefficientRegister")
             lookup_table_coefficient_register.configuration_lookup_table_data_width = self.configuration_fir_data_width
+            lookup_table_coefficient_register.configuration_lookback_lookup_table_entries_count = self.configuration_lookback_length
+            lookup_table_coefficient_register.configuration_lookahead_lookup_table_entries_count = self.configuration_lookahead_length
+            lookup_table_coefficient_register.configuration_reduce_size = self.configuration_reduce_size
+            if self.configuration_reduce_size == True:
+                lookup_table_coefficient_register.lookback_mapped_reordered_lut_entries = lookback_lut_entries_mapped_reordered
+                lookup_table_coefficient_register.lookback_mapped_reordered_bit_widths = lookback_lut_entries_max_widths_sorted
+                lookup_table_coefficient_register.lookahead_mapped_reordered_lut_entries = lookahead_lut_entries_mapped_reordered
+                lookup_table_coefficient_register.lookahead_mapped_reordered_bit_widths = lookahead_lut_entries_max_widths_sorted
             lookup_table_coefficient_register.generate()
             self.module_list.append(lookup_table_coefficient_register)
 
@@ -311,9 +378,10 @@ class DigitalEstimatorGenerator():
             look_up_table_synchronous_assertions.generate()
             self.simulation_module_list.append(look_up_table_synchronous_assertions)
 
-            look_up_table_block_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableBlockSynchronousAssertions.LookUpTableBlockSynchronousAssertions(self.path, "LookUpTableBlockSynchronousAssertions")
-            look_up_table_block_synchronous_assertions.generate()
-            self.simulation_module_list.append(look_up_table_block_synchronous_assertions)
+            if self.configuration_reduce_size == False:
+                look_up_table_block_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableBlockSynchronousAssertions.LookUpTableBlockSynchronousAssertions(self.path, "LookUpTableBlockSynchronousAssertions")
+                look_up_table_block_synchronous_assertions.generate()
+                self.simulation_module_list.append(look_up_table_block_synchronous_assertions)
 
         if self.configuration_down_sample_rate > 1:
             input_downsample_accumulate_register_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.InputDownsampleAccumulateRegisterAssertions.InputDownsampleAccumulateRegisterAssertions(self.path, "InputDownsampleAccumulateRegisterAssertions")
@@ -807,7 +875,7 @@ if __name__ == '__main__':
     digital_estimator_generator: DigitalEstimatorGenerator = DigitalEstimatorGenerator()
     digital_estimator_generator.generate()
     #simulation_result: tuple[int, str] = (0, "Skip simulation.")
-    #simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
+    simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
     #simulation_result: tuple[int, str] = (0, "Ignore fails in simulation.")
     #digital_estimator_generator.simulate_vcs()
     #if simulation_result[0] == 0:
@@ -824,14 +892,20 @@ if __name__ == '__main__':
     #    digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
     #    digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
 
-    lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(digital_estimator_generator.high_level_simulation.fir_hb_matrix, digital_estimator_generator.configuration_fir_lut_input_width)
-    lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = digital_estimator_generator.configuration_fir_lut_input_width)
-    lookback_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookback_lut_entries_bit_mapping[0])
-    lookback_lut_entries_max_widths_average = statistics.mean(lookback_lut_entries_max_widths)
-    print(lookback_lut_entries)
-    print(lookback_lut_entries_bit_mapping[0])
-    print(lookback_lut_entries_max_widths)
-    print("Average bit width: ", lookback_lut_entries_bit_mapping[1])
-    print("Possible savings on registers with average bit width: ", str(100.0 * (digital_estimator_generator.configuration_fir_data_width - lookback_lut_entries_bit_mapping[1]) / digital_estimator_generator.configuration_fir_data_width), "%")
-    print("Average maximum bit width: ", lookback_lut_entries_max_widths_average)
-    print("Possible savings on registers with average maximum bit width: ", str(100.0 * (digital_estimator_generator.configuration_fir_data_width - lookback_lut_entries_max_widths_average) / digital_estimator_generator.configuration_fir_data_width), "%")
+    #lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(digital_estimator_generator.high_level_simulation.fir_hb_matrix, digital_estimator_generator.configuration_fir_lut_input_width)
+    #lookback_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookback_lut_entries, lut_input_width = digital_estimator_generator.configuration_fir_lut_input_width)
+    #lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = digital_estimator_generator.configuration_fir_lut_input_width)
+    #lookback_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookback_lut_entries_bit_mapping[0])
+    #lookback_lut_entries_max_widths_average = statistics.mean(lookback_lut_entries_max_widths)
+    #lookback_lut_entries_max_widths_sorted: list[tuple[int, int]] = CBADC_HighLevelSimulation.sort_luts_by_size(lookback_lut_entries_max_widths)
+    #lookback_lut_entries_mapped_reordered: list[list[int]] = CBADC_HighLevelSimulation.reorder_lut_entries(lookback_lut_entries_mapped, lookback_lut_entries_max_widths_sorted)
+    #print("LUT entries: \n", lookback_lut_entries)
+    #print("Mapped LUT entries: \n", lookback_lut_entries_mapped)
+    #print("LUT entry bit mapping: \n", lookback_lut_entries_bit_mapping[0])
+    #print("Maximum widths per LUT: \n", lookback_lut_entries_max_widths)
+    #print("Average bit width: ", lookback_lut_entries_bit_mapping[1])
+    #print("Possible savings on registers with average bit width: ", str(100.0 * (digital_estimator_generator.configuration_fir_data_width - lookback_lut_entries_bit_mapping[1]) / digital_estimator_generator.configuration_fir_data_width), "%")
+    #print("Average bit width: ", lookback_lut_entries_max_widths_average)
+    #print("Possible savings on registers with average maximum bit width: ", str(100.0 * (digital_estimator_generator.configuration_fir_data_width - lookback_lut_entries_max_widths_average) / digital_estimator_generator.configuration_fir_data_width), "%")
+    #print("Sorted maximum widhts per LUT: \n", lookback_lut_entries_max_widths_sorted)
+    #print("Reordered mapped LUT entries: \n", lookback_lut_entries_mapped_reordered)
