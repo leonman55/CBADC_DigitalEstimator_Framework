@@ -34,6 +34,7 @@ import DigitalEstimatorModules.GrayCodeToBinary
 import DigitalEstimatorModules.LookUpTableCoefficientRegister
 import DigitalEstimatorModules.ValidCounter
 import DigitalEstimatorModules.AdderSynchronous
+import DigitalEstimatorModules.AdderSynchronousReducedSize
 import DigitalEstimatorModules.AdderBlockSynchronous
 import DigitalEstimatorModules.LookUpTableSynchronous
 import DigitalEstimatorModules.LookUpTableBlockSynchronous
@@ -107,33 +108,36 @@ class DigitalEstimatorGenerator():
     """
 
     #path: str = "../df/sim/SystemVerilogFiles"
-    path: str = "/local_work/leonma/sim/SystemVerilogFiles7"
+    path: str = "/local_work/leonma/sim/SystemVerilogFiles22"
     #path_synthesis: str = "../df/src/SystemVerilogFiles"
-    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles7"
+    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles22"
 
     scripts_base_folder = "../df/scripts"
 
 
     configuration_number_of_timesteps_in_clock_cycle: int = 10
+    configuration_analog_bandwidth: int = 20 * 1e6
     configuration_n_number_of_analog_states: int = 2
     #configuration_n_number_of_analog_states: int = 7
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
-    configuration_lookback_length: int = 128
-    #configuration_lookback_length: int = 512
-    configuration_lookahead_length: int = 128
-    #configuration_lookahead_length: int = 512
+    configuration_lookback_length: int = 132
+    #configuration_lookback_length: int = 256
+    configuration_lookahead_length: int = 132
+    #configuration_lookahead_length: int = 256
     configuration_fir_data_width: int = 21
-    #configuration_fir_data_width: int = 28
-    configuration_fir_lut_input_width: int = 4
+    #configuration_fir_data_width: int = 25
+    configuration_fir_lut_input_width: int = 3
     configuration_simulation_length: int = 1 << 12
     configuration_over_sample_rate: int = 32
-    #configuration_over_sample_rate: int = 11
+    #configuration_over_sample_rate: int = 8
     configuration_down_sample_rate: int = configuration_over_sample_rate
     configuration_counter_type: str = "binary"
     configuration_combinatorial_synchronous: str = "synchronous"
     configuration_required_snr_db: float = 55
     configuration_coefficients_variable_fixed: str = "variable"
-    configuration_reduce_size: bool = True
+    configuration_reduce_size_coefficients: bool = True
+    configuration_reduce_size_luts: bool = True
+    configuration_reduce_size_adders: bool = True
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = None
 
@@ -160,6 +164,7 @@ class DigitalEstimatorGenerator():
 
         self.high_level_simulation = CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator(
             path = self.path,
+            bandwidth = self.configuration_analog_bandwidth,
             n_number_of_analog_states = self.configuration_n_number_of_analog_states,
             m_number_of_digital_states = self.configuration_m_number_of_digital_states,
             k1 = self.configuration_lookback_length,
@@ -204,12 +209,15 @@ class DigitalEstimatorGenerator():
         digital_estimator_testbench.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
         digital_estimator_testbench.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
         digital_estimator_testbench.configuration_mapped_simulation = False
+        digital_estimator_testbench.configuration_placedandrouted_simulation = False
         digital_estimator_testbench.top_module_name = self.top_module_name
-        digital_estimator_testbench.configuration_reduce_size = self.configuration_reduce_size
+        digital_estimator_testbench.configuration_reduce_size_coefficients = self.configuration_reduce_size_coefficients
+        digital_estimator_testbench.configuration_reduce_size_luts = self.configuration_reduce_size_luts
+        digital_estimator_testbench.configuration_reduce_size_adders = self.configuration_reduce_size_adders
         digital_estimator_testbench.generate()
         self.simulation_module_list.append(digital_estimator_testbench)
         
-        if self.configuration_reduce_size == True:
+        if self.configuration_reduce_size_coefficients == True:
             lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hb_matrix, self.configuration_fir_lut_input_width)
             lookback_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
             lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
@@ -255,9 +263,11 @@ class DigitalEstimatorGenerator():
         digital_estimator.configuration_down_sample_rate = self.configuration_down_sample_rate
         digital_estimator.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
         digital_estimator.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
-        digital_estimator.configuration_reduce_size = self.configuration_reduce_size
+        digital_estimator.configuration_reduce_size_coefficients = self.configuration_reduce_size_coefficients
+        digital_estimator.configuration_reduce_size_luts = self.configuration_reduce_size_luts
+        digital_estimator.configuration_reduce_size_adders = self.configuration_reduce_size_adders
         digital_estimator.high_level_simulation = self.high_level_simulation
-        if self.configuration_reduce_size == True:
+        if self.configuration_reduce_size_coefficients == True:
             digital_estimator.lookback_mapped_reordered_lut_entries = lookback_lut_entries_mapped_reordered
             digital_estimator.lookback_mapped_reordered_bit_widths = lookback_lut_entries_max_widths_sorted
             digital_estimator.lookahead_mapped_reordered_lut_entries = lookahead_lut_entries_mapped_reordered
@@ -283,13 +293,19 @@ class DigitalEstimatorGenerator():
             adder_block_combinatorial.generate()
             self.module_list.append(adder_block_combinatorial)
         elif self.configuration_combinatorial_synchronous == "synchronous":
-            adder_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderSynchronous.AdderSynchronous(self.path, "AdderSynchronous")
-            adder_synchronous.generate()
-            self.module_list.append(adder_synchronous)
+            if self.configuration_reduce_size_adders == False:
+                adder_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderSynchronous.AdderSynchronous(self.path, "AdderSynchronous")
+                adder_synchronous.generate()
+                self.module_list.append(adder_synchronous)
+            elif self.configuration_reduce_size_adders == True:
+                adder_synchronous_reduced_size: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderSynchronousReducedSize.AdderSynchronousReducedSize(self.path, "AdderSynchronous")
+                adder_synchronous_reduced_size.generate()
+                self.module_list.append(adder_synchronous_reduced_size)
 
-            adder_block_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderBlockSynchronous.AdderBlockSynchronous(self.path, "AdderBlockSynchronous")
-            adder_block_synchronous.generate()
-            self.module_list.append(adder_block_synchronous)
+            if self.configuration_reduce_size_adders == False:
+                adder_block_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderBlockSynchronous.AdderBlockSynchronous(self.path, "AdderBlockSynchronous")
+                adder_block_synchronous.generate()
+                self.module_list.append(adder_block_synchronous)
 
             look_up_table_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableSynchronous.LookUpTableSynchronous(self.path, "LookUpTableSynchronous")
             look_up_table_synchronous.generate()
@@ -329,8 +345,8 @@ class DigitalEstimatorGenerator():
             lookup_table_coefficient_register.configuration_lookup_table_data_width = self.configuration_fir_data_width
             lookup_table_coefficient_register.configuration_lookback_lookup_table_entries_count = self.configuration_lookback_length
             lookup_table_coefficient_register.configuration_lookahead_lookup_table_entries_count = self.configuration_lookahead_length
-            lookup_table_coefficient_register.configuration_reduce_size = self.configuration_reduce_size
-            if self.configuration_reduce_size == True:
+            lookup_table_coefficient_register.configuration_reduce_size_coefficients = self.configuration_reduce_size_coefficients
+            if self.configuration_reduce_size_coefficients == True:
                 lookup_table_coefficient_register.lookback_mapped_reordered_lut_entries = lookback_lut_entries_mapped_reordered
                 lookup_table_coefficient_register.lookback_mapped_reordered_bit_widths = lookback_lut_entries_max_widths_sorted
                 lookup_table_coefficient_register.lookahead_mapped_reordered_lut_entries = lookahead_lut_entries_mapped_reordered
@@ -363,14 +379,16 @@ class DigitalEstimatorGenerator():
             look_up_table_block_assertions.generate()
             self.simulation_module_list.append(look_up_table_block_assertions)
         else:
-            adder_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderSynchronousAssertions.AdderSynchronousAssertions(self.path, "AdderSynchronousAssertions")
-            adder_synchronous_assertions.configuration_adder_input_width = self.configuration_fir_lut_input_width
-            adder_synchronous_assertions.generate()
-            self.simulation_module_list.append(adder_synchronous_assertions)
+            if self.configuration_reduce_size_adders == False:
+                adder_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderSynchronousAssertions.AdderSynchronousAssertions(self.path, "AdderSynchronousAssertions")
+                adder_synchronous_assertions.configuration_adder_input_width = self.configuration_fir_lut_input_width
+                adder_synchronous_assertions.generate()
+                self.simulation_module_list.append(adder_synchronous_assertions)
 
-            adder_block_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderBlockSynchronousAssertions.AdderBlockSynchronousAssertions(self.path, "AdderBlockSynchronousAssertions")
-            adder_block_synchronous_assertions.generate()
-            self.simulation_module_list.append(adder_block_synchronous_assertions)
+            if self.configuration_reduce_size_adders == False:
+                adder_block_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderBlockSynchronousAssertions.AdderBlockSynchronousAssertions(self.path, "AdderBlockSynchronousAssertions")
+                adder_block_synchronous_assertions.generate()
+                self.simulation_module_list.append(adder_block_synchronous_assertions)
 
             look_up_table_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableSynchronousAssertions.LookUpTableSynchronousAssertions(self.path, "LookUpTableSynchronousAssertions")
             look_up_table_synchronous_assertions.configuration_input_width = self.configuration_fir_lut_input_width
@@ -378,7 +396,7 @@ class DigitalEstimatorGenerator():
             look_up_table_synchronous_assertions.generate()
             self.simulation_module_list.append(look_up_table_synchronous_assertions)
 
-            if self.configuration_reduce_size == False:
+            if self.configuration_reduce_size_coefficients == False:
                 look_up_table_block_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableBlockSynchronousAssertions.LookUpTableBlockSynchronousAssertions(self.path, "LookUpTableBlockSynchronousAssertions")
                 look_up_table_block_synchronous_assertions.generate()
                 self.simulation_module_list.append(look_up_table_block_synchronous_assertions)
@@ -721,7 +739,7 @@ class DigitalEstimatorGenerator():
         mapped_options.append("-timescale 1ns/1ps")
         mapped_options.append("-top DigitalEstimatorTestbench")
         mapped_options.append("-input xrun_mapped_" + synthesis_program + ".tcl")
-        mapped_options.append("DigitalEstimatorTestbench_mapped_" + synthesis_program + ".sv")
+        mapped_options.append("DigitalEstimatorTestbench_mapped_" + synthesis_program + "_xrun.sv")
         mapped_options.append(self.top_module_name + ".mapped." + synthesis_program + ".v")
         for line in mapped_options:
             mapped_options_file.write_line_linebreak(line)
@@ -762,6 +780,58 @@ class DigitalEstimatorGenerator():
         for line in mapped_commands:
             mapped_tcl_command_file.write_line_linebreak(line)
         mapped_tcl_command_file.close_output_file()
+        
+    def generate_vcs_mapped_simulation_file(self, name: str = "sim_vcs_mapped_genus.sh", synthesis_program: str = "genus"):
+        """Generates the script for the RTL simulation with Synopsys VCS.
+        """
+        simulation_file: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        simulation_file.set_path(self.path)
+        simulation_file.set_name(name)
+        simulation_file.open_output_file()
+
+        settings: list[str] = list[str]()
+        settings.append("vcs -f vcs_mapped_options_" + synthesis_program)
+        settings.append("./simv")
+        settings.append("rm simv")
+        settings.append("rm -R ./csrc")
+        settings.append("rm -R simv.daidir")
+        #settings.append("rm -R waves.shm")
+        for line in settings:
+            simulation_file.write_line_linebreak(line)
+        simulation_file.close_output_file()
+        Path(self.path + "/" + name).chmod(S_IRWXU)
+
+    def generate_vcs_mapped_options_file(self, name: str = "vcs_mapped_options_genus", synthesis_program: str = "genus"):
+        """Generates the options file used for the RTL simulation with Synopsys VCS.
+        """
+        options_file: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        options_file.set_path(self.path)
+        options_file.set_name(name)
+        options_file.open_output_file()
+
+        options: list[str] = list[str]()
+        options.append("-sverilog")
+        options.append("-timescale=1ns/1ps")
+        options.append("/eda/kits/stm/28nm_fdsoi_v1.3a/C28SOI_SC_12_CORE_LR/5.1-05.81/behaviour/verilog/C28SOI_SC_12_CORE_LR.v")
+        options.append("/eda/kits/stm/28nm_fdsoi_v1.3a/C28SOI_SC_12_CLK_LR/5.1-06.81/behaviour/verilog/C28SOI_SC_12_CLK_LR.v")
+        options.append("/eda/kits/stm/28nm_fdsoi_v1.3a/C28SOI_SC_12_PR_LR/5.3.a-00.80/behaviour/verilog/C28SOI_SC_12_PR_LR.v")
+        options.append("DigitalEstimatorTestbench_mapped_" + synthesis_program + "_vcs.sv")
+        options.append(self.top_module_name + ".mapped." + synthesis_program + ".v") 
+        for line in options:
+            options_file.write_line_linebreak(line)
+        options_file.close_output_file()
+
+    def simulate_vcs_mapped(self, synthesis_program: str = "genus"):
+        if synthesis_program == "genus":
+            self.copy_mapped_design_genus()
+        elif synthesis_program == "synopsys":
+            self.copy_mapped_design_synopsys()
+        self.generate_testbench_mapped_design(simulation_program = "vcs", synthesis_program = synthesis_program)
+        self.generate_vcs_mapped_simulation_file(name = "sim_vcs_mapped_" + synthesis_program + ".sh", synthesis_program = synthesis_program)
+        self.generate_vcs_mapped_options_file(name = "vcs_mapped_options_" + synthesis_program, synthesis_program = synthesis_program)
+        sim_vcs_mapped = subprocess.Popen(["./sim_vcs_mapped_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
+        sim_vcs_mapped.wait()
+        os.rename(self.path + "/digital_estimation.csv", self.path + "/digital_estimation_mapped_" + synthesis_program + ".vcs.csv")
 
     def copy_mapped_design_genus(self):
         #shutil.copyfile("../df/out/" + self.top_module_name + "/syn/" + self.top_module_name + ".v", self.path + "/" + self.top_module_name + ".mapped.genus.v")
@@ -770,8 +840,8 @@ class DigitalEstimatorGenerator():
     def copy_mapped_design_synopsys(self):
         shutil.copyfile(self.path_synthesis + "/out/" + self.top_module_name + "/results/" + self.top_module_name + ".mapped.v", self.path + "/" + self.top_module_name + ".mapped.synopsys.v")
 
-    def generate_testbench_mapped_design(self, synthesis_program: str = "genus"):
-        digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, name = "DigitalEstimatorTestbench_mapped_" + synthesis_program)
+    def generate_testbench_mapped_design(self, simulation_program: str = "xrun", synthesis_program: str = "genus"):
+        digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, name = "DigitalEstimatorTestbench_mapped_" + synthesis_program + "_" + simulation_program)
         digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = self.configuration_number_of_timesteps_in_clock_cycle
         digital_estimator_testbench.configuration_lookback_length = self.configuration_lookback_length
         digital_estimator_testbench.configuration_lookahead_length = self.configuration_lookahead_length
@@ -787,8 +857,13 @@ class DigitalEstimatorGenerator():
         digital_estimator_testbench.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
         digital_estimator_testbench.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
         digital_estimator_testbench.configuration_mapped_simulation = True
+        digital_estimator_testbench.configuration_placedandrouted_simulation = False
+        digital_estimator_testbench.configuration_simulation_program = simulation_program
         digital_estimator_testbench.configuration_synthesis_program = synthesis_program
         digital_estimator_testbench.top_module_name = self.top_module_name
+        digital_estimator_testbench.configuration_reduce_size_coefficients = self.configuration_reduce_size_coefficients
+        digital_estimator_testbench.configuration_reduce_size_luts = self.configuration_reduce_size_luts
+        digital_estimator_testbench.configuration_reduce_size_adders = self.configuration_reduce_size_adders
         digital_estimator_testbench.generate()
 
     def simulate_mapped_design(self, synthesis_program: str = "genus"):
@@ -864,7 +939,202 @@ class DigitalEstimatorGenerator():
         self.generate_primetime_power_script(synthesis_program = synthesis_program)
         power_estimation_primetime = subprocess.Popen(["./run_primetime_power_estimation_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
         power_estimation_primetime.wait()
-    
+
+    def generate_placeandroute_scripts_innovus(self, synthesis_program: str = "genus"):
+        script_lines: list[str] = list[str]()
+        if synthesis_program == "genus":
+            with open(self.scripts_base_folder + "/pnr_innovus_synthesis_from_genus_template", mode = "r") as placeandroute_script_old:
+                script_lines = placeandroute_script_old.readlines()
+                for index in range(len(script_lines)):
+                    if script_lines[index].find("DESIGN_TOP_MODULE=") != -1:
+                        script_lines.pop(index)
+                        script_lines.insert(index, "DESIGN_TOP_MODULE=\"" + self.top_module_name + "\"\n")
+                    elif script_lines[index].find("DESIGN_TOP_MODULE=") != -1:
+                        pass
+            with open(self.path_synthesis + "/pnr_innovus_synthesis_from_genus", mode = "w") as placeandroute_script:
+                placeandroute_script.writelines(script_lines)
+            Path(self.path_synthesis + "/pnr_innovus_synthesis_from_genus").chmod(S_IRWXU)
+                    
+            shutil.copyfile(self.scripts_base_folder + "/pnr_innovus_synthesis_from_genus_template.tcl", self.path_synthesis + "/pnr_innovus_synthesis_from_genus.tcl")
+            shutil.copyfile(self.scripts_base_folder + "/init_innovus_synthesis_from_genus_template.tcl", self.path_synthesis + "/init_innovus_synthesis_from_genus.tcl")
+        elif synthesis_program == "synopsys":
+            with open(self.scripts_base_folder + "/pnr_innovus_synthesis_from_synopsys_template", mode = "r") as placeandroute_script_old:
+                script_lines = placeandroute_script_old.readlines()
+                for index in range(len(script_lines)):
+                    if script_lines[index].find("DESIGN_TOP_MODULE=") != -1:
+                        script_lines.pop(index)
+                        script_lines.insert(index, "DESIGN_TOP_MODULE=\"" + self.top_module_name + "\"\n")
+                    elif script_lines[index].find("DESIGN_TOP_MODULE=") != -1:
+                        pass
+            with open(self.path_synthesis + "/pnr_innovus_synthesis_from_synopsys", mode = "w") as placeandroute_script:
+                placeandroute_script.writelines(script_lines)
+            Path(self.path_synthesis + "/pnr_innovus_synthesis_from_synopsys").chmod(S_IRWXU)
+                    
+            shutil.copyfile(self.scripts_base_folder + "/pnr_innovus_synthesis_from_synopsys_template.tcl", self.path_synthesis + "/pnr_innovus_synthesis_from_synopsys.tcl")
+            shutil.copyfile(self.scripts_base_folder + "/init_innovus_synthesis_from_synopsys_template.tcl", self.path_synthesis + "/init_innovus_synthesis_from_synopsys.tcl")
+        
+        shutil.copyfile(self.scripts_base_folder + "/config_pnr_innovus_template.tcl", self.path_synthesis + "/config_pnr_innovus.tcl")
+        shutil.copyfile(self.scripts_base_folder + "/checks_innovus_template.tcl", self.path_synthesis + "/checks_innovus.tcl")
+        shutil.copyfile(self.scripts_base_folder + "/clock_innovus_template.tcl", self.path_synthesis + "/clock_innovus.tcl")
+        shutil.copyfile(self.scripts_base_folder + "/export_innovus_template.tcl", self.path_synthesis + "/export_innovus.tcl")
+        shutil.copyfile(self.scripts_base_folder + "/fillers_innovus_template.tcl", self.path_synthesis + "/fillers_innovus.tcl")
+        shutil.copyfile(self.scripts_base_folder + "/floorplan_innovus_template.tcl", self.path_synthesis + "/floorplan_innovus.tcl")
+        shutil.copyfile(self.scripts_base_folder + "/mmmc_innovus_template.tcl", self.path_synthesis + "/mmmc_innovus.tcl")
+        shutil.copyfile(self.scripts_base_folder + "/place_innovus_template.tcl", self.path_synthesis + "/place_innovus.tcl")
+        shutil.copyfile(self.scripts_base_folder + "/power_innovus_template.tcl", self.path_synthesis + "/power_innovus.tcl")
+        shutil.copyfile(self.scripts_base_folder + "/route_innovus_template.tcl", self.path_synthesis + "/route_innovus.tcl")
+        
+    def placeandroute_innovus(self, synthesis_program: str = "genus"):
+        if synthesis_program == "genus":
+            placeandroute_innovus = subprocess.Popen(["./pnr_innovus_synthesis_from_genus"], cwd = self.path_synthesis, text = True, shell = True)
+            placeandroute_innovus.wait()
+        elif synthesis_program == "synopsys":
+            placeandroute_innovus = subprocess.Popen(["./pnr_innovus_synthesis_from_synopsys"], cwd = self.path_synthesis, text = True, shell = True)
+            placeandroute_innovus.wait()
+            
+    def generate_testbench_placedandrouted_design(self, synthesis_program: str = "genus"):
+        digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, name = "DigitalEstimatorTestbench_placedandrouted_innovus_" + synthesis_program)
+        digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = self.configuration_number_of_timesteps_in_clock_cycle
+        digital_estimator_testbench.configuration_lookback_length = self.configuration_lookback_length
+        digital_estimator_testbench.configuration_lookahead_length = self.configuration_lookahead_length
+        digital_estimator_testbench.configuration_n_number_of_analog_states = self.configuration_n_number_of_analog_states
+        digital_estimator_testbench.configuration_m_number_of_digital_states = self.configuration_m_number_of_digital_states
+        digital_estimator_testbench.configuration_fir_data_width = self.configuration_fir_data_width
+        digital_estimator_testbench.configuration_fir_lut_input_width = self.configuration_fir_lut_input_width
+        digital_estimator_testbench.configuration_simulation_length = self.configuration_simulation_length
+        digital_estimator_testbench.configuration_down_sample_rate = self.configuration_down_sample_rate
+        digital_estimator_testbench.configuration_over_sample_rate = self.configuration_over_sample_rate
+        digital_estimator_testbench.high_level_simulation = self.high_level_simulation
+        digital_estimator_testbench.configuration_downsample_clock_counter_type = self.configuration_counter_type
+        digital_estimator_testbench.configuration_combinatorial_synchronous = self.configuration_combinatorial_synchronous
+        digital_estimator_testbench.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
+        digital_estimator_testbench.configuration_mapped_simulation = False
+        digital_estimator_testbench.configuration_placedandrouted_simulation = True
+        digital_estimator_testbench.configuration_simulation_program = "xrun"
+        digital_estimator_testbench.configuration_synthesis_program = synthesis_program
+        digital_estimator_testbench.top_module_name = self.top_module_name
+        digital_estimator_testbench.configuration_reduce_size_coefficients = self.configuration_reduce_size_coefficients
+        digital_estimator_testbench.configuration_reduce_size_luts = self.configuration_reduce_size_luts
+        digital_estimator_testbench.configuration_reduce_size_adders = self.configuration_reduce_size_adders
+        digital_estimator_testbench.generate()
+        
+    def copy_placedandrouted_design_files_innovus(self, synthesis_program: str = "genus"):
+        shutil.copyfile(self.path_synthesis + "/placeandroute_output_innovus/synthesis_from_" + synthesis_program + "/" + self.top_module_name + "/" + self.top_module_name + "_elc.v", self.path + "/" + self.top_module_name + "_elc_" + synthesis_program + ".v")
+        shutil.copyfile(self.path_synthesis + "/placeandroute_output_innovus/synthesis_from_" + synthesis_program + "/" + self.top_module_name + "/" + self.top_module_name + "_physical.v", self.path + "/" + self.top_module_name + "_physical_" + synthesis_program + ".v")
+        shutil.copyfile(self.path_synthesis + "/placeandroute_output_innovus/synthesis_from_" + synthesis_program + "/" + self.top_module_name + "/" + self.top_module_name + "_final.sdf", self.path + "/" + self.top_module_name + "_final_" + synthesis_program + ".sdf")
+        
+    def generate_xrun_placeandroute_simulation_script(self, name: str = "sim_placeandroute_innovus_genus.sh", synthesis_program: str = "genus"):
+        placeandroute_simulation_script: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        placeandroute_simulation_script.set_path(self.path)
+        placeandroute_simulation_script.set_name(name)
+        placeandroute_simulation_script.open_output_file()
+        placeandroute_settings: list[str] = list[str]()
+        placeandroute_settings.append("source ~/pro/acmos2/virtuoso/setup_user")
+        placeandroute_settings.append("source ~/pro/fall2022/bash/setup_user")
+        placeandroute_settings.append("")
+        placeandroute_settings.append("xrun -f xrun_options_placeandroute_innovus_" + synthesis_program)
+        placeandroute_settings.append("rm -R xcelium.d/")
+        for line in placeandroute_settings:
+            placeandroute_simulation_script.write_line_linebreak(line)
+        placeandroute_simulation_script.close_output_file()
+        Path(self.path + "/" + name).chmod(S_IRWXU)
+
+    def generate_xrun_placeandroute_simulation_options_file(self, name: str = "xrun_options_placeandroute_innovus_genus", synthesis_program: str = "genus"):
+        placeandroute_options_file: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        placeandroute_options_file.set_path(self.path)
+        placeandroute_options_file.set_name(name)
+        placeandroute_options_file.open_output_file()
+        placeandroute_options: list[str] = list[str]()
+        placeandroute_options.append("-64bit")
+        placeandroute_options.append("-access +rwc")
+        placeandroute_options.append("-v /eda/kits/stm/28nm_fdsoi_v1.3a/C28SOI_SC_12_CORE_LR/5.1-05.81/behaviour/verilog/C28SOI_SC_12_CORE_LR.v")
+        placeandroute_options.append("-v /eda/kits/stm/28nm_fdsoi_v1.3a/C28SOI_SC_12_CLK_LR/5.1-06.81/behaviour/verilog/C28SOI_SC_12_CLK_LR.v")
+        placeandroute_options.append("-v /eda/kits/stm/28nm_fdsoi_v1.3a/C28SOI_SC_12_PR_LR/5.3.a-00.80/behaviour/verilog/C28SOI_SC_12_PR_LR.v")
+        placeandroute_options.append("-timescale 1ns/1ps")
+        placeandroute_options.append("-top DigitalEstimatorTestbench")
+        placeandroute_options.append("-input xrun_placeandroute_innovus_" + synthesis_program + ".tcl")
+        placeandroute_options.append("DigitalEstimatorTestbench_placedandrouted_innovus_" + synthesis_program + ".sv")
+        placeandroute_options.append(self.top_module_name + "_elc_" + synthesis_program + ".v")
+        for line in placeandroute_options:
+            placeandroute_options_file.write_line_linebreak(line)
+        placeandroute_options_file.close_output_file()
+
+    def generate_xrun_placeandroute_simulation_tcl_command_file(self, name: str = "xrun_placeandroute_innovus_genus.tcl", synthesis_program: str = "genus"):
+        placeandroute_tcl_command_file: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        placeandroute_tcl_command_file.set_path(self.path)
+        placeandroute_tcl_command_file.set_name(name)
+        placeandroute_tcl_command_file.open_output_file()
+        placeandroute_commands: list[str] = list[str]()
+        placeandroute_commands.append("database -open placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -vcd -into placeandroute_signal_activity_innovus_" + synthesis_program + ".vcd")
+        lookback_lookup_table_entries_size: int = self.configuration_m_number_of_digital_states * self.configuration_lookback_length * self.configuration_fir_data_width * 2**self.configuration_fir_lut_input_width / self.configuration_fir_lut_input_width
+        lookahead_lookup_table_entries_size: int = self.configuration_m_number_of_digital_states * self.configuration_lookahead_length * self.configuration_fir_data_width * 2**self.configuration_fir_lut_input_width / self.configuration_fir_lut_input_width
+        #placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookback_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookback_lookup_table_entries")
+        #placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookahead_lookup_table_entries")
+        #placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookback_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookback_lookup_table_block.lookup_table_entries")
+        #placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookahead_lookup_table_block.lookup_table_entries")
+        if synthesis_program == "genus":
+            if self.configuration_coefficients_variable_fixed == "variable":
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookback_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.lookback_lookup_table_entries")
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookback_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.lookahead_lookup_table_entries")
+        if synthesis_program == "synopsys":
+            placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookback_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookback_lookup_table_block.lookup_table_entries")
+            placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookahead_lookup_table_block.lookup_table_entries")
+            if self.configuration_coefficients_variable_fixed == "variable":
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.lookback_lookup_table_entries")
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.lookahead_lookup_table_entries")
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookback_lookup_table_entries")
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookahead_lookup_table_entries")
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookup_table_coefficient_register.lookback_coefficients")
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookup_table_coefficient_register.lookahead_coefficients")
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookback_lookup_table_block.lookup_table_entries")
+                placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -packed " + str(lookahead_lookup_table_entries_size).removesuffix(".0") + " DigitalEstimatorTestbench.dut_digital_estimator.lookahead_lookup_table_block.lookup_table_entries")
+        placeandroute_commands.append("probe -create -vcd -database placeandroute_signal_activity_innovus_" + synthesis_program + "_vcd -depth all -all")
+        placeandroute_commands.append("run")
+        placeandroute_commands.append("exit")
+        for line in placeandroute_commands:
+            placeandroute_tcl_command_file.write_line_linebreak(line)
+        placeandroute_tcl_command_file.close_output_file()
+        
+    def simulate_placedandrouted_design(self, synthesis_program: str = "genus"):
+        self.generate_testbench_placedandrouted_design(synthesis_program = synthesis_program)
+        self.copy_placedandrouted_design_files_innovus(synthesis_program = synthesis_program)
+        self.generate_xrun_placeandroute_simulation_script(name = "sim_placeandroute_innovus_" + synthesis_program + ".sh", synthesis_program = synthesis_program)
+        self.generate_xrun_placeandroute_simulation_options_file(name = "xrun_options_placeandroute_innovus_" + synthesis_program, synthesis_program = synthesis_program)
+        self.generate_xrun_placeandroute_simulation_tcl_command_file(name = "xrun_placeandroute_innovus_" + synthesis_program + ".tcl", synthesis_program = synthesis_program)
+        simulation_placedandrouted = subprocess.Popen(["./sim_placeandroute_innovus_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
+        simulation_placedandrouted.wait()
+        
+    def copy_primetime_power_placeandroute_tcl_script(self):
+        shutil.copyfile(self.scripts_base_folder + "/primetime_power_template_placeandroute.tcl", self.path + "/primetime_power_estimation_placeandroute.tcl")
+
+    def generate_primetime_power_placeandroute_script(self, synthesis_program: str = "genus"):
+        commands: list[str] = list[str]()
+        commands.append("SYNTHESIS_PROGRAM=" + synthesis_program + "\n")
+        commands.append("PLACEDANDROUTED_DESIGN_FILE=./" + self.top_module_name + "_physical_" + synthesis_program + ".v\n")
+        commands.append("PLACEDANDROUTED_DESIGN_NAME=" + self.top_module_name + "\n")
+        commands.append("SDF_FILE=./" + self.top_module_name + "_final_" + synthesis_program + ".sdf\n")
+        commands.append("VCD_FILE=./placeandroute_signal_activity_innovus_" + synthesis_program + ".vcd\n")
+        commands.append("export SYNTHESIS_PROGRAM\n")
+        commands.append("export PLACEDANDROUTED_DESIGN_FILE\n")
+        commands.append("export PLACEDANDROUTED_DESIGN_NAME\n")
+        commands.append("export SDF_FILE\n")
+        commands.append("export VCD_FILE\n")
+        commands.append("primetime -file primetime_power_estimation_placeandroute.tcl\n")
+        commands.append("SYNTHESIS_PROGRAM=\n")
+        commands.append("PLACEDANDROUTED_DESIGN_FILE=\n")
+        commands.append("PLACEDANDROUTED_DESIGN_NAME=\n")
+        commands.append("SDF_FILE=\n")
+        commands.append("VCD_FILE=\n")
+        with open(self.path + "/run_primetime_power_estimation_placeandroute_" + synthesis_program + ".sh", "w") as primetime_power_script:
+            primetime_power_script.writelines(commands)
+            Path(self.path + "/run_primetime_power_estimation_placeandroute_" + synthesis_program + ".sh").chmod(S_IRWXU)
+
+    def estimate_power_primetime_placeandroute(self, synthesis_program: str = "genus"):
+        self.copy_primetime_power_placeandroute_tcl_script()
+        self.generate_primetime_power_placeandroute_script(synthesis_program = synthesis_program)
+        power_estimation_primetime_placeandroute = subprocess.Popen(["./run_primetime_power_estimation_placeandroute_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
+        power_estimation_primetime_placeandroute.wait()
+        
 
 if __name__ == '__main__':
     """Main function for testing the implementation.
@@ -874,38 +1144,29 @@ if __name__ == '__main__':
     """
     digital_estimator_generator: DigitalEstimatorGenerator = DigitalEstimatorGenerator()
     digital_estimator_generator.generate()
-    #simulation_result: tuple[int, str] = (0, "Skip simulation.")
-    simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
+    simulation_result: tuple[int, str] = (0, "Skip simulation.")
+    #simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
     #simulation_result: tuple[int, str] = (0, "Ignore fails in simulation.")
-    #digital_estimator_generator.simulate_vcs()
-    #if simulation_result[0] == 0:
-    #    pass
-    #    digital_estimator_generator.copy_design_files_for_synthesis()
-    #    digital_estimator_generator.write_synthesis_scripts_genus()
-    #    digital_estimator_generator.synthesize_genus()
-    #    digital_estimator_generator.write_synthesis_scripts_synopsys()
-    #    digital_estimator_generator.synthesize_synopsys()
-    #    digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
-    #    digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
-    #    digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus")
-    #    digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
-    #    digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
-    #    digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
-
-    #lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(digital_estimator_generator.high_level_simulation.fir_hb_matrix, digital_estimator_generator.configuration_fir_lut_input_width)
-    #lookback_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookback_lut_entries, lut_input_width = digital_estimator_generator.configuration_fir_lut_input_width)
-    #lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = digital_estimator_generator.configuration_fir_lut_input_width)
-    #lookback_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookback_lut_entries_bit_mapping[0])
-    #lookback_lut_entries_max_widths_average = statistics.mean(lookback_lut_entries_max_widths)
-    #lookback_lut_entries_max_widths_sorted: list[tuple[int, int]] = CBADC_HighLevelSimulation.sort_luts_by_size(lookback_lut_entries_max_widths)
-    #lookback_lut_entries_mapped_reordered: list[list[int]] = CBADC_HighLevelSimulation.reorder_lut_entries(lookback_lut_entries_mapped, lookback_lut_entries_max_widths_sorted)
-    #print("LUT entries: \n", lookback_lut_entries)
-    #print("Mapped LUT entries: \n", lookback_lut_entries_mapped)
-    #print("LUT entry bit mapping: \n", lookback_lut_entries_bit_mapping[0])
-    #print("Maximum widths per LUT: \n", lookback_lut_entries_max_widths)
-    #print("Average bit width: ", lookback_lut_entries_bit_mapping[1])
-    #print("Possible savings on registers with average bit width: ", str(100.0 * (digital_estimator_generator.configuration_fir_data_width - lookback_lut_entries_bit_mapping[1]) / digital_estimator_generator.configuration_fir_data_width), "%")
-    #print("Average bit width: ", lookback_lut_entries_max_widths_average)
-    #print("Possible savings on registers with average maximum bit width: ", str(100.0 * (digital_estimator_generator.configuration_fir_data_width - lookback_lut_entries_max_widths_average) / digital_estimator_generator.configuration_fir_data_width), "%")
-    #print("Sorted maximum widhts per LUT: \n", lookback_lut_entries_max_widths_sorted)
-    #print("Reordered mapped LUT entries: \n", lookback_lut_entries_mapped_reordered)
+    digital_estimator_generator.simulate_vcs()
+    if simulation_result[0] == 0:
+        pass
+        #digital_estimator_generator.copy_design_files_for_synthesis()
+        #digital_estimator_generator.write_synthesis_scripts_genus()
+        #digital_estimator_generator.synthesize_genus()
+        #digital_estimator_generator.write_synthesis_scripts_synopsys()
+        #digital_estimator_generator.synthesize_synopsys()
+        #digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
+        #digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
+        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus")
+        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
+        #digital_estimator_generator.generate_placeandroute_scripts_innovus(synthesis_program = "genus")
+        #digital_estimator_generator.placeandroute_innovus(synthesis_program = "genus")
+        #digital_estimator_generator.generate_placeandroute_scripts_innovus(synthesis_program = "synopsys")
+        #digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
+        
+        #digital_estimator_generator.simulate_placedandrouted_design("genus")
+        #digital_estimator_generator.estimate_power_primetime_placeandroute("genus")
+        #digital_estimator_generator.simulate_placedandrouted_design("synopsys")
+        #digital_estimator_generator.estimate_power_primetime_placeandroute("synopsys")

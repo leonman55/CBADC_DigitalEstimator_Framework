@@ -78,7 +78,10 @@ class AdderBlockSynchronous(SystemVerilogModule.SystemVerilogModule):
                     );
                 end
                 else begin
-                    assign adder_out[element_index + adder_out_offset] = stage_index - 1 ? adder_out[adder_out_offset - 1] : in[2 * element_index];
+                    always_ff @(posedge clk) begin
+                        adder_out[element_index + adder_out_offset] <= stage_index - 1 ? adder_out[adder_out_offset - 1] : in[2 * element_index];
+                    end
+                    //assign adder_out[element_index + adder_out_offset] = stage_index - 1 ? adder_out[adder_out_offset - 1] : in[2 * element_index];
                 end
             end
         end

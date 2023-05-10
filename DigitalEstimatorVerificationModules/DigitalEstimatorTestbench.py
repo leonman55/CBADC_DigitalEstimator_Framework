@@ -39,8 +39,12 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     configuration_combinatorial_synchronous: str = "combinatorial"
     configuration_coefficients_variable_fixed: str = "variable"
     configuration_mapped_simulation: bool = False
+    configuration_placedandrouted_simulation: bool = False
+    configuration_simulation_program: str = "xrun"
     configuration_synthesis_program: str = "genus"
-    configuration_reduce_size: bool = False
+    configuration_reduce_size_coefficients: bool = False
+    configuration_reduce_size_luts: bool = False
+    configuration_reduce_size_adders: bool = False
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator
 
@@ -69,7 +73,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         #)
         self.high_level_simulation.simulate_digital_estimator_fir()
         
-        if self.configuration_reduce_size == True:
+        if self.configuration_reduce_size_coefficients == True:
             lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hb_matrix, self.configuration_fir_lut_input_width)
             lookback_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
             lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
@@ -123,11 +127,11 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         if self.configuration_coefficients_variable_fixed == "variable":
             content += """logic enable_lookup_table_coefficient_shift_in;
     """
-            if self.configuration_reduce_size == True:
+            if self.configuration_reduce_size_coefficients == True:
                 content += f"""logic lookup_table_coefficient_shift_in_lookback_lookahead_switch;
     logic [{maximum_data_width} - 1 : 0] lookup_table_coefficient;
     """
-            elif self.configuration_reduce_size == False:
+            elif self.configuration_reduce_size_coefficients == False:
                 content += """logic [OUTPUT_DATA_WIDTH - 1 : 0] lookup_table_coefficient;
     """
             content += """//logic [(LOOKBACK_LOOKUP_TABLE_ENTRY_COUNT * OUTPUT_DATA_WIDTH) - 1 : 0] lookback_lookup_table_entries;
@@ -143,7 +147,12 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
     initial begin
         $assertoff;
-    end
+    """
+        if self.configuration_simulation_program == "vcs" and self.configuration_mapped_simulation == True:
+            content += f"""\t$dumpfile("mapped_signal_activity_{self.configuration_synthesis_program}_{self.configuration_simulation_program}.vcd");
+        $dumpvars;
+    """
+        content += """end
 
     initial begin
         rst = 1'b1;
@@ -165,7 +174,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             content += """initial begin
         enable_lookup_table_coefficient_shift_in = 1'b0;
         """
-            if self.configuration_reduce_size == True:
+            if self.configuration_reduce_size_coefficients == True:
                 content += """lookup_table_coefficient_shift_in_lookback_lookahead_switch = 1'b0;
         """
             content += """lookup_table_coefficient = {OUTPUT_DATA_WIDTH{1'b0}};
@@ -175,7 +184,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         enable_lookup_table_coefficient_shift_in = 1'b1;
         
         """
-            if self.configuration_reduce_size == True:
+            if self.configuration_reduce_size_coefficients == True:
                 content += """lookup_table_coefficient_shift_in_lookback_lookahead_switch = 1'b1;
                 
         """
@@ -188,7 +197,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         end
         
         """
-            if self.configuration_reduce_size == True:
+            if self.configuration_reduce_size_coefficients == True:
                 content += """lookup_table_coefficient_shift_in_lookback_lookahead_switch = 1'b0;
                 
         """
@@ -245,6 +254,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         """
         if self.configuration_mapped_simulation == True:
             content += f"""static int digital_estimation_output_file = $fopen("./digital_estimation_mapped_{self.configuration_synthesis_program}.csv", "w");"""
+        elif self.configuration_placedandrouted_simulation == True:
+            content += f"""static int digital_estimation_output_file = $fopen("./digital_estimation_placedandrouted_innovus_{self.configuration_synthesis_program}.csv", "w");"""
         else:
             content += """static int digital_estimation_output_file = $fopen("./digital_estimation.csv", "w");
         """
@@ -254,7 +265,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         end
         
         """
-        if self.configuration_reduce_size == True:
+        if self.configuration_reduce_size_coefficients == True:
             content += """$fwrite(digital_estimation_output_file, "0.0, 0.0, 0.0\\n");
         """
         content += """$fwrite(digital_estimation_output_file, "0.0, 0.0, 0.0\\n");
@@ -290,10 +301,18 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             //$fwrite(digital_estimation_output_file, "%d, %d, %d\\n", signal_estimation_output, dut_digital_estimator.adder_block_lookback_result, dut_digital_estimator.adder_block_lookahead_result);
             """
         if self.configuration_fir_data_width < 32:
-            content += """$fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookback_result) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookahead_result) / (2**(OUTPUT_DATA_WIDTH - 1)));
+            if self.configuration_mapped_simulation == False and self.configuration_placedandrouted_simulation == False:
+                content += """$fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookback_result) / (2**(OUTPUT_DATA_WIDTH - 1)), real'(dut_digital_estimator.adder_block_lookahead_result) / (2**(OUTPUT_DATA_WIDTH - 1)));
+            """
+            elif self.configuration_mapped_simulation == True or self.configuration_placedandrouted_simulation == True:
+                content += """$fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output) / (2**(OUTPUT_DATA_WIDTH - 1)), 0.0, 0.0);
             """
         else:
-            content += """$fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)), real'(dut_digital_estimator.adder_block_lookback_result >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)), real'(dut_digital_estimator.adder_block_lookahead_result >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)));
+            if self.configuration_mapped_simulation == False and self.configuration_placedandrouted_simulation == False:
+                content += """$fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)), real'(dut_digital_estimator.adder_block_lookback_result >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)), real'(dut_digital_estimator.adder_block_lookahead_result >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)));
+            """
+            elif self.configuration_mapped_simulation == True or self.configuration_placedandrouted_simulation == True:
+                content += """$fwrite(digital_estimation_output_file, "%0.18f, %0.18f, %0.18f\\n", real'(signal_estimation_output >>> (OUTPUT_DATA_WIDTH - 31)) / (2**(30)), 0.0, 0.0);
             """
         if self.configuration_down_sample_rate == 1:
             content += """
@@ -309,7 +328,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     """
         
         if self.configuration_coefficients_variable_fixed == "variable":
-            if self.configuration_reduce_size == False:
+            if self.configuration_reduce_size_coefficients == False:
                 content += """initial begin
         lookback_lookup_table_entries = """
                 content += ndarray_to_system_verilog_array(numpy.array(CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.get_fir_lookback_coefficient_matrix(), self.configuration_fir_lut_input_width))) + ";\n\t\t"
@@ -318,7 +337,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
                 content += f"""\tend
     
     """
-            elif self.configuration_reduce_size == True:
+            elif self.configuration_reduce_size_coefficients == True:
                 lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hb_matrix, self.configuration_fir_lut_input_width)
                 lookback_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
                 lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
@@ -342,7 +361,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
         content += f"""
     {self.top_module_name} """
-        if self.configuration_mapped_simulation == False:
+        if self.configuration_mapped_simulation == False and self.configuration_placedandrouted_simulation == False:
             content += """#(
             .N_NUMBER_ANALOG_STATES(N_NUMBER_ANALOG_STATES),
             .M_NUMBER_DIGITAL_STATES(M_NUMBER_DIGITAL_STATES),
@@ -361,7 +380,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         if self.configuration_coefficients_variable_fixed == "variable":
             content += """.enable_lookup_table_coefficient_shift_in(enable_lookup_table_coefficient_shift_in),
             """
-            if self.configuration_reduce_size == True:
+            if self.configuration_reduce_size_coefficients == True:
                 content += """.lookup_table_coefficient_shift_in_lookback_lookahead_switch(lookup_table_coefficient_shift_in_lookback_lookahead_switch),
             """
             content += """.lookup_table_coefficient(lookup_table_coefficient),
@@ -374,7 +393,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
 
 
     """
-        if self.configuration_mapped_simulation == False:
+        if self.configuration_mapped_simulation == False and self.configuration_placedandrouted_simulation == False:
             if self.configuration_combinatorial_synchronous == "combinatorial":
                 content += """bind AdderCombinatorial AdderCombinatorialAssertions #(
             .INPUT_WIDTH(INPUT_WIDTH)
@@ -421,7 +440,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     
 """
             elif self.configuration_combinatorial_synchronous == "synchronous":
-                content += """bind AdderSynchronous AdderSynchronousAssertions #(
+                if self.configuration_reduce_size_adders == False:
+                    content += """bind AdderSynchronous AdderSynchronousAssertions #(
             .INPUT_WIDTH(INPUT_WIDTH)
         )
         adder_synchronous_bind (
@@ -443,7 +463,8 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             .out(out)
     );
 
-    bind LookUpTableSynchronous LookUpTableSynchronousAssertions #(
+    """
+                content += """bind LookUpTableSynchronous LookUpTableSynchronousAssertions #(
             .INPUT_WIDTH(INPUT_WIDTH),
             .DATA_WIDTH(DATA_WIDTH)
         )
@@ -456,8 +477,9 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     );
 
 """     
-        if self.configuration_reduce_size == False:
-            content += """\tbind LookUpTableBlockSynchronous LookUpTableBlockSynchronousAssertions #(
+        if self.configuration_mapped_simulation == False and self.configuration_placedandrouted_simulation == False:
+            if self.configuration_reduce_size_coefficients == False:
+                content += """\tbind LookUpTableBlockSynchronous LookUpTableBlockSynchronousAssertions #(
             .TOTAL_INPUT_WIDTH(TOTAL_INPUT_WIDTH),
             .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)

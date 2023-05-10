@@ -5,7 +5,7 @@ class LookUpTableCoefficientRegister(SystemVerilogModule.SystemVerilogModule):
     configuration_lookup_table_data_width: int = 31
     configuration_lookback_lookup_table_entries_count: int = 512
     configuration_lookahead_lookup_table_entries_count: int = 512
-    configuration_reduce_size: bool = False
+    configuration_reduce_size_coefficients: bool = False
 
     lookback_mapped_reordered_lut_entries: list[list[int]] = list[list[int]]()
     lookback_mapped_reordered_bit_widths: list[int] = list[int]()
@@ -19,7 +19,7 @@ class LookUpTableCoefficientRegister(SystemVerilogModule.SystemVerilogModule):
         maximum_data_width: int = 0
         lookback_register_total_width: int = 0
         lookahead_register_total_width: int = 0
-        if self.configuration_reduce_size == False:
+        if self.configuration_reduce_size_coefficients == False:
             content: str = f"""module LookUpTableCoefficientRegister #(
         parameter LOOKUP_TABLE_DATA_WIDTH = {self.configuration_lookup_table_data_width},
         parameter LOOKBACK_LOOKUP_TABLE_ENTRIES_COUNT = {self.configuration_lookback_lookup_table_entries_count},
@@ -49,7 +49,7 @@ class LookUpTableCoefficientRegister(SystemVerilogModule.SystemVerilogModule):
 
 endmodule"""
 
-        elif self.configuration_reduce_size == True:
+        elif self.configuration_reduce_size_coefficients == True:
             if self.lookback_mapped_reordered_bit_widths < self.lookahead_mapped_reordered_bit_widths:
                 maximum_data_width = self.lookahead_mapped_reordered_bit_widths[len(self.lookahead_mapped_reordered_bit_widths) - 1][0]
             else:
