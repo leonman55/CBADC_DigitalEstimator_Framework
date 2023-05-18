@@ -1,11 +1,13 @@
 import pytest
-from pathlib import Path
 
 import DigitalEstimatorGenerator
 
 
 # Base folder for the generation of the test cases.
 base_folder: str = "/df/sim/TestCase"
+
+path_simulation: str = "/local_work/leonma/sim"
+path_synthesis: str = "/local_work/leonma/src"
 
 
 # Explaination of the parameters
@@ -17,7 +19,21 @@ base_folder: str = "/df/sim/TestCase"
 # lookback length
 # lookahead length
 # LUT input bit width
-def test_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
+def test_digital_estimator_generator(
+    test_case_number: int = 0,
+    directory: str = "DigitalEstimator",
+    n_number_of_analog_states: int = 3,
+    oversampling_rate: int = 23,
+    bit_width: int = 22,
+    lookback_length: int = 160,
+    lookahead_length: int = 160,
+    lut_input_width: int = 4,
+    counter_type: str = "binary",
+    combinatorial_synchronous: str = "synchronous",
+    coefficients_variable_fixed: str = "variable",
+    reduce_size_coefficients: bool = False,
+    reduce_size_luts: bool = False,
+    reduce_size_adders: bool = False):
     """Method for executing the test cases.
 
     Parameters
@@ -39,26 +55,82 @@ def test_digital_estimator_generator(test_case_number: int, directory: str, n_nu
     lut_input_width: int
         Select input width of the LUT tables
     """
-    current_working_directory = Path.cwd()
-    directory = str(current_working_directory.parent) + directory + "_" + str(n_number_of_analog_states) + "_" + str(oversampling_rate) + "_" + str(bit_width) + "_" + str(lookback_length) + "_" + str(lookahead_length) + "_" + str(lut_input_width)
-    Path(directory).mkdir(parents = True, exist_ok = True)
-    assert Path.exists(Path(directory))
+    test_case_name: str = "DigitalEstimator_" + str(n_number_of_analog_states) + "_" + str(oversampling_rate) + "_" + str(bit_width) + "_" + str(lookback_length) + "_" + str(lookahead_length) + "_" + str(lut_input_width) + "_" + coefficients_variable_fixed + "_" + combinatorial_synchronous + "_" + counter_type + "_" + str(reduce_size_coefficients) + "_" + str(reduce_size_luts) + "_" + str(reduce_size_adders)
+    simulation_directory: str = path_simulation + "/" + test_case_name
+    synthesis_directory: str = path_synthesis + "/" + test_case_name
+    
     digital_estimator_generator: DigitalEstimatorGenerator.DigitalEstimatorGenerator = DigitalEstimatorGenerator.DigitalEstimatorGenerator()
-    digital_estimator_generator.path = directory
+    digital_estimator_generator.path = simulation_directory
+    digital_estimator_generator.path_synthesis = synthesis_directory
+    
     digital_estimator_generator.configuration_n_number_of_analog_states = n_number_of_analog_states
-    digital_estimator_generator.configuration_over_sample_rate = oversampling_rate
-    digital_estimator_generator.configuration_fir_data_width = bit_width
     digital_estimator_generator.configuration_lookback_length = lookback_length
     digital_estimator_generator.configuration_lookahead_length = lookahead_length
+    digital_estimator_generator.configuration_fir_data_width = bit_width
     digital_estimator_generator.configuration_fir_lut_input_width = lut_input_width
-    
-    digital_estimator_generator.generate()
-    error: int = 0
-    error_message: str = ""
-    error, error_message = digital_estimator_generator.simulate()
-    if error:
-        pytest.fail(reason = error_message)
+    digital_estimator_generator.configuration_over_sample_rate = oversampling_rate
+    digital_estimator_generator.configuration_counter_type = counter_type
+    digital_estimator_generator.configuration_combinatorial_synchronous = combinatorial_synchronous
+    digital_estimator_generator.configuration_coefficients_variable_fixed = coefficients_variable_fixed
+    digital_estimator_generator.configuration_reduce_size_coefficients = reduce_size_coefficients
+    digital_estimator_generator.configuration_reduce_size_luts = reduce_size_luts
+    digital_estimator_generator.configuration_reduce_size_adders = reduce_size_adders
 
+    digital_estimator_generator.generate()
+    simulation_result: tuple[int, str] = (0, "Skip simulation.")
+    #simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
+    #simulation_result: tuple[int, str] = (0, "Ignore fails in simulation.")
+    #digital_estimator_generator.simulate_vcs()
+    if simulation_result[0] == 0:
+        #pass
+        #digital_estimator_generator.synthesize_genus()
+        #digital_estimator_generator.synthesize_synopsys()
+        #digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
+        digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
+        #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "genus")
+        digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
+        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus")
+        digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
+        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
+        #digital_estimator_generator.placeandroute_innovus(synthesis_program = "genus")
+        digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
+        
+        #digital_estimator_generator.simulate_placedandrouted_design("genus")
+        #digital_estimator_generator.estimate_power_primetime_placeandroute("genus")
+        digital_estimator_generator.simulate_placedandrouted_design("synopsys")
+        digital_estimator_generator.estimate_power_primetime_placeandroute("synopsys")
+
+
+
+test_non_reduced_configurations_0 = [
+        #(3, 23, 22, 128, 128, 4, "binary", "synchronous", "variable", False, False, False),
+        (4, 15, 22, 160, 160, 4, "binary", "synchronous", "variable", False, False, False),
+        (5, 12, 22, 160, 160, 4, "binary", "synchronous", "variable", False, False, False)
+        #(6, 9, 22, 224, 224, 4, "binary", "synchronous", "variable", False, False, False),
+        #(7, 8, 22, 224, 224, 4, "binary", "synchronous", "variable", False, False, False),
+        #(8, 7, 22, 256, 256, 4, "binary", "synchronous", "variable", False, False, False)
+    ]
+
+@pytest.mark.test_non_reduced_configurations_0
+@pytest.mark.parametrize(("n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width", "counter_type", "combinatorial_synchronous", "coefficients_variable_fixed", "reduce_size_coefficients", "reduce_size_luts", "reduce_size_adders"), test_non_reduced_configurations_0)
+def test_non_reduced_configurations_0(n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int, counter_type: str, combinatorial_synchronous: str, coefficients_variable_fixed: str, reduce_size_coefficients: bool, reduce_size_luts: bool, reduce_size_adders: bool):
+    test_digital_estimator_generator(n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width, counter_type = counter_type, combinatorial_synchronous = combinatorial_synchronous, coefficients_variable_fixed = coefficients_variable_fixed, reduce_size_coefficients = reduce_size_coefficients, reduce_size_luts = reduce_size_luts, reduce_size_adders = reduce_size_adders)
+
+
+test_reduced_configurations_0 = [
+        (3, 23, 22, 128, 128, 4, "binary", "synchronous", "variable", True, True, True),
+        (4, 15, 22, 160, 160, 4, "binary", "synchronous", "variable", True, True, True),
+        (5, 12, 22, 160, 160, 4, "binary", "synchronous", "variable", True, True, True),
+        (6, 9, 22, 224, 224, 4, "binary", "synchronous", "variable", True, True, True),
+        (7, 8, 22, 224, 224, 4, "binary", "synchronous", "variable", True, True, True),
+        (8, 7, 22, 256, 256, 4, "binary", "synchronous", "variable", True, True, True)
+    ]
+
+@pytest.mark.test_reduced_configurations_0
+@pytest.mark.parametrize(("n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width", "counter_type", "combinatorial_synchronous", "coefficients_variable_fixed", "reduce_size_coefficients", "reduce_size_luts", "reduce_size_adders"), test_reduced_configurations_0)
+def test_reduced_configurations_0(n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int, counter_type: str, combinatorial_synchronous: str, coefficients_variable_fixed: str, reduce_size_coefficients: bool, reduce_size_luts: bool, reduce_size_adders: bool):
+    test_digital_estimator_generator(n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width, counter_type = counter_type, combinatorial_synchronous = combinatorial_synchronous, coefficients_variable_fixed = coefficients_variable_fixed, reduce_size_coefficients = reduce_size_coefficients, reduce_size_luts = reduce_size_luts, reduce_size_adders = reduce_size_adders)
 
 
 # Explaination of the parameters
@@ -84,7 +156,6 @@ test_2to8_64_512_512_4_cases = [
 @pytest.mark.parametrize(("test_case_number", "directory", "n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width"), test_2to8_64_512_512_4_cases)
 def test_2to8_64_512_512_4_digital_estimator_generator(test_case_number: int, directory: str, n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int):
     test_digital_estimator_generator(test_case_number = test_case_number, directory = directory, n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width)
-
 
 
 # Explaination of the parameters

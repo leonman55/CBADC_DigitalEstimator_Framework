@@ -108,27 +108,27 @@ class DigitalEstimatorGenerator():
     """
 
     #path: str = "../df/sim/SystemVerilogFiles"
-    path: str = "/local_work/leonma/sim/SystemVerilogFiles22"
+    path: str = "/local_work/leonma/sim/SystemVerilogFiles24"
     #path_synthesis: str = "../df/src/SystemVerilogFiles"
-    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles22"
+    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles24"
 
     scripts_base_folder = "../df/scripts"
 
 
     configuration_number_of_timesteps_in_clock_cycle: int = 10
     configuration_analog_bandwidth: int = 20 * 1e6
-    configuration_n_number_of_analog_states: int = 2
+    configuration_n_number_of_analog_states: int = 3
     #configuration_n_number_of_analog_states: int = 7
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
-    configuration_lookback_length: int = 132
+    configuration_lookback_length: int = 128
     #configuration_lookback_length: int = 256
-    configuration_lookahead_length: int = 132
+    configuration_lookahead_length: int = 128
     #configuration_lookahead_length: int = 256
-    configuration_fir_data_width: int = 21
+    configuration_fir_data_width: int = 22
     #configuration_fir_data_width: int = 25
-    configuration_fir_lut_input_width: int = 3
+    configuration_fir_lut_input_width: int = 4
     configuration_simulation_length: int = 1 << 12
-    configuration_over_sample_rate: int = 32
+    configuration_over_sample_rate: int = 23
     #configuration_over_sample_rate: int = 8
     configuration_down_sample_rate: int = configuration_over_sample_rate
     configuration_counter_type: str = "binary"
@@ -192,6 +192,9 @@ class DigitalEstimatorGenerator():
         lookahead_lut_entries_max_widths_average = None
         lookahead_lut_entries_max_widths_sorted = None
         lookahead_lut_entries_mapped_reordered = None
+        
+        self.module_list = list[SystemVerilogModule.SystemVerilogModule]()
+        self.simulation_module_list = list[SystemVerilogModule.SystemVerilogModule]()
 
         digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, "DigitalEstimatorTestbench")
         digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = self.configuration_number_of_timesteps_in_clock_cycle
@@ -501,6 +504,12 @@ class DigitalEstimatorGenerator():
             source: str = self.path + "/" + module_filename
             destination: str = self.path_synthesis + "/" + module_filename
             shutil.copyfile(source, destination)
+            
+    def calculate_clock_periode_ns(self) -> float:
+        number_of_significant_digits: int = 2
+        clock_periode: float = 10**9 / (self.configuration_analog_bandwidth * 2 * self.configuration_over_sample_rate)
+        clock_periode = float(math.trunc(clock_periode * 10**number_of_significant_digits)) / 10**number_of_significant_digits
+        return clock_periode
 
     def write_synthesis_scripts_genus(self):
         try:
@@ -527,7 +536,17 @@ class DigitalEstimatorGenerator():
                 synthesize_script.writelines(script_lines)
             Path(self.path_synthesis + "/synth").chmod(S_IRWXU)
 
-            shutil.copyfile(self.scripts_base_folder + "/config_syn_template.tcl", self.path_synthesis + "/config_syn.tcl")
+            #shutil.copyfile(self.scripts_base_folder + "/config_syn_template.tcl", self.path_synthesis + "/config_syn.tcl")
+            script_settings_lines: list[str] = list[str]()
+            with open(self.scripts_base_folder + "/config_syn_template.tcl", mode = "r") as synthesize_configuration_old:
+                script_settings_lines = synthesize_configuration_old.readlines()
+                for index in range(len(script_settings_lines)):
+                    if script_settings_lines[index].find("set TIMING_CLOCK_PERIOD") != -1:
+                        script_settings_lines.pop(index)
+                        script_settings_lines.insert(index, "set TIMING_CLOCK_PERIOD " + str(self.calculate_clock_periode_ns()) + "\n")
+                        break
+            with open(self.path_synthesis + "/config_syn.tcl", mode = "w") as synthesize_configuration:
+                synthesize_configuration.writelines(script_settings_lines)
 
             script_settings_lines: list[str] = list[str]()
             with open(self.scripts_base_folder + "/synth_template.tcl", mode = "r") as synthesize_settings_old:
@@ -552,6 +571,8 @@ class DigitalEstimatorGenerator():
         comparing the high level simulation against the RTL simulation
         and the achieved performance of the system.
         """
+        self.copy_design_files_for_synthesis()
+        self.write_synthesis_scripts_genus()
         synth_genus = subprocess.Popen(["./synth"], cwd = self.path_synthesis, text = True, shell = True)
         synth_genus.wait()
 
@@ -563,7 +584,17 @@ class DigitalEstimatorGenerator():
 
             shutil.copyfile(self.scripts_base_folder + "/common_setup_template.tcl", self.path_synthesis + "/common_setup.tcl")
             shutil.copyfile(self.scripts_base_folder + "/dc_setup_template.tcl", self.path_synthesis + "/dc_setup.tcl")
-            shutil.copyfile(self.scripts_base_folder + "/dc_template.tcl", self.path_synthesis + "/dc.tcl")
+            #shutil.copyfile(self.scripts_base_folder + "/dc_template.tcl", self.path_synthesis + "/dc.tcl")
+            script_settings_lines: list[str] = list[str]()
+            with open(self.scripts_base_folder + "/dc_template.tcl", mode = "r") as synthesize_settings_old:
+                script_settings_lines = synthesize_settings_old.readlines()
+                for index in range(len(script_settings_lines)):
+                    if script_settings_lines[index].find("create_clock -name \"clk\"") != -1:
+                        script_settings_lines.pop(index)
+                        script_settings_lines.insert(index, f"create_clock -name \"clk\" -period {str(self.calculate_clock_periode_ns())} -waveform{{0.0 {str(self.calculate_clock_periode_ns() / 2.0)}}} [get_ports clk]")
+                        break
+            with open(self.path_synthesis + "/dc.tcl", mode = "w") as synthesize_settings:
+                synthesize_settings.writelines(script_settings_lines)
 
             script_lines: list[str] = list[str]()
             with open(self.scripts_base_folder + "/runSynopsysDesignCompilerSynthesis_Template.sh", mode = "r") as synthesize_script_old:
@@ -601,6 +632,8 @@ class DigitalEstimatorGenerator():
         comparing the high level simulation against the RTL simulation
         and the achieved performance of the system.
         """
+        self.copy_design_files_for_synthesis()
+        self.write_synthesis_scripts_synopsys()
         synth_synopsys = subprocess.Popen(["./runSynopsysDesignCompilerSynthesis.sh"], cwd = self.path_synthesis, text = True, shell = True)
         synth_synopsys.wait()
 
@@ -831,7 +864,7 @@ class DigitalEstimatorGenerator():
         self.generate_vcs_mapped_options_file(name = "vcs_mapped_options_" + synthesis_program, synthesis_program = synthesis_program)
         sim_vcs_mapped = subprocess.Popen(["./sim_vcs_mapped_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
         sim_vcs_mapped.wait()
-        os.rename(self.path + "/digital_estimation.csv", self.path + "/digital_estimation_mapped_" + synthesis_program + ".vcs.csv")
+        os.rename(self.path + "/digital_estimation_mapped_" + synthesis_program + ".csv", self.path + "/digital_estimation_mapped_" + synthesis_program + ".vcs.csv")
 
     def copy_mapped_design_genus(self):
         #shutil.copyfile("../df/out/" + self.top_module_name + "/syn/" + self.top_module_name + ".v", self.path + "/" + self.top_module_name + ".mapped.genus.v")
@@ -985,12 +1018,9 @@ class DigitalEstimatorGenerator():
         shutil.copyfile(self.scripts_base_folder + "/route_innovus_template.tcl", self.path_synthesis + "/route_innovus.tcl")
         
     def placeandroute_innovus(self, synthesis_program: str = "genus"):
-        if synthesis_program == "genus":
-            placeandroute_innovus = subprocess.Popen(["./pnr_innovus_synthesis_from_genus"], cwd = self.path_synthesis, text = True, shell = True)
-            placeandroute_innovus.wait()
-        elif synthesis_program == "synopsys":
-            placeandroute_innovus = subprocess.Popen(["./pnr_innovus_synthesis_from_synopsys"], cwd = self.path_synthesis, text = True, shell = True)
-            placeandroute_innovus.wait()
+        self.generate_placeandroute_scripts_innovus(synthesis_program = synthesis_program)
+        placeandroute_innovus = subprocess.Popen(["./pnr_innovus_synthesis_from_" + synthesis_program], cwd = self.path_synthesis, text = True, shell = True)
+        placeandroute_innovus.wait()
             
     def generate_testbench_placedandrouted_design(self, synthesis_program: str = "genus"):
         digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, name = "DigitalEstimatorTestbench_placedandrouted_innovus_" + synthesis_program)
@@ -1144,26 +1174,23 @@ if __name__ == '__main__':
     """
     digital_estimator_generator: DigitalEstimatorGenerator = DigitalEstimatorGenerator()
     digital_estimator_generator.generate()
-    simulation_result: tuple[int, str] = (0, "Skip simulation.")
-    #simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
-    #simulation_result: tuple[int, str] = (0, "Ignore fails in simulation.")
-    digital_estimator_generator.simulate_vcs()
+    #simulation_result: tuple[int, str] = (0, "Skip simulation.")
+    simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
+    simulation_result: tuple[int, str] = (0, "Ignore fails in simulation.")
+    #digital_estimator_generator.simulate_vcs()
     if simulation_result[0] == 0:
         pass
-        #digital_estimator_generator.copy_design_files_for_synthesis()
-        #digital_estimator_generator.write_synthesis_scripts_genus()
         #digital_estimator_generator.synthesize_genus()
-        #digital_estimator_generator.write_synthesis_scripts_synopsys()
-        #digital_estimator_generator.synthesize_synopsys()
+        digital_estimator_generator.synthesize_synopsys()
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
+        #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "genus")
+        #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
         #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
         #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
-        #digital_estimator_generator.generate_placeandroute_scripts_innovus(synthesis_program = "genus")
         #digital_estimator_generator.placeandroute_innovus(synthesis_program = "genus")
-        #digital_estimator_generator.generate_placeandroute_scripts_innovus(synthesis_program = "synopsys")
         #digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
         
         #digital_estimator_generator.simulate_placedandrouted_design("genus")
