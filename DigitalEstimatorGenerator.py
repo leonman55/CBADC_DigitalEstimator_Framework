@@ -12,12 +12,6 @@ import gzip
 import statistics
 
 import FileGenerator
-import SystemVerilogSignal
-# import SystemVerilogSyntaxGenerator
-import SystemVerilogPort
-import SystemVerilogPortDirection
-import SystemVerilogPortType
-import SystemVerilogClockEdge
 import SystemVerilogModule
 import DigitalEstimatorModules.TestModule
 import DigitalEstimatorModules.DigitalEstimatorWrapper
@@ -26,6 +20,7 @@ import DigitalEstimatorModules.DigitalEstimatorWrapper
 import DigitalEstimatorModules.LookUpTable
 import DigitalEstimatorModules.LookUpTableBlock
 import DigitalEstimatorModules.AdderCombinatorial
+import DigitalEstimatorModules.AdderCombinatorialReducedSize
 import DigitalEstimatorModules.AdderBlockCombinatorial
 import DigitalEstimatorModules.ClockDivider
 import DigitalEstimatorModules.InputDownsampleAccumulateRegister
@@ -132,7 +127,7 @@ class DigitalEstimatorGenerator():
     #configuration_over_sample_rate: int = 8
     configuration_down_sample_rate: int = configuration_over_sample_rate
     configuration_counter_type: str = "binary"
-    configuration_combinatorial_synchronous: str = "synchronous"
+    configuration_combinatorial_synchronous: str = "combinatorial"
     configuration_required_snr_db: float = 55
     configuration_coefficients_variable_fixed: str = "variable"
     configuration_reduce_size_coefficients: bool = True
@@ -280,43 +275,50 @@ class DigitalEstimatorGenerator():
         self.module_list.append(digital_estimator)
 
         if self.configuration_combinatorial_synchronous == "combinatorial":
+            if self.configuration_reduce_size_adders == False:
+                adder_combinatorial: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderCombinatorial.AdderCombinatorial(self.path, "AdderCombinatorial")
+                adder_combinatorial.generate()
+                self.module_list.append(adder_combinatorial)
+
+                adder_block_combinatorial: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderBlockCombinatorial.AdderBlockCombinatorial(self.path, "AdderBlockCombinatorial")
+                adder_block_combinatorial.generate()
+                self.module_list.append(adder_block_combinatorial)
+            elif self.configuration_reduce_size_adders == True:
+                adder_combinatorial_reduced_size: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderCombinatorialReducedSize.AdderCombinatorialReducedSize(self.path, "AdderCombinatorial")
+                adder_combinatorial_reduced_size.generate()
+                self.module_list.append(adder_combinatorial_reduced_size)
+                
             look_up_table: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTable.LookUpTable(self.path, "LookUpTable")
             look_up_table.generate()
             self.module_list.append(look_up_table)
 
-            look_up_table_block: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableBlock.LookUpTableBlock(self.path, "LookUpTableBlock")
-            look_up_table_block.generate()
-            self.module_list.append(look_up_table_block)
+            if self.configuration_reduce_size_luts == False:
+                look_up_table_block: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableBlock.LookUpTableBlock(self.path, "LookUpTableBlock")
+                look_up_table_block.generate()
+                self.module_list.append(look_up_table_block)
 
-            adder_combinatorial: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderCombinatorial.AdderCombinatorial(self.path, "AdderCombinatorial")
-            adder_combinatorial.generate()
-            self.module_list.append(adder_combinatorial)
-
-            adder_block_combinatorial: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderBlockCombinatorial.AdderBlockCombinatorial(self.path, "AdderBlockCombinatorial")
-            adder_block_combinatorial.generate()
-            self.module_list.append(adder_block_combinatorial)
         elif self.configuration_combinatorial_synchronous == "synchronous":
             if self.configuration_reduce_size_adders == False:
                 adder_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderSynchronous.AdderSynchronous(self.path, "AdderSynchronous")
                 adder_synchronous.generate()
                 self.module_list.append(adder_synchronous)
+                
+                adder_block_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderBlockSynchronous.AdderBlockSynchronous(self.path, "AdderBlockSynchronous")
+                adder_block_synchronous.generate()
+                self.module_list.append(adder_block_synchronous)
             elif self.configuration_reduce_size_adders == True:
                 adder_synchronous_reduced_size: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderSynchronousReducedSize.AdderSynchronousReducedSize(self.path, "AdderSynchronous")
                 adder_synchronous_reduced_size.generate()
                 self.module_list.append(adder_synchronous_reduced_size)
 
-            if self.configuration_reduce_size_adders == False:
-                adder_block_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.AdderBlockSynchronous.AdderBlockSynchronous(self.path, "AdderBlockSynchronous")
-                adder_block_synchronous.generate()
-                self.module_list.append(adder_block_synchronous)
-
             look_up_table_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableSynchronous.LookUpTableSynchronous(self.path, "LookUpTableSynchronous")
             look_up_table_synchronous.generate()
             self.module_list.append(look_up_table_synchronous)
 
-            look_up_table_block_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableBlockSynchronous.LookUpTableBlockSynchronous(self.path, "LookUpTableBlockSynchronous")
-            look_up_table_block_synchronous.generate()
-            self.module_list.append(look_up_table_block_synchronous)
+            if self.configuration_reduce_size_luts == False:
+                look_up_table_block_synchronous: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.LookUpTableBlockSynchronous.LookUpTableBlockSynchronous(self.path, "LookUpTableBlockSynchronous")
+                look_up_table_block_synchronous.generate()
+                self.module_list.append(look_up_table_block_synchronous)
 
         if self.configuration_down_sample_rate > 1:
             input_downsample_accumulate_register: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorModules.InputDownsampleAccumulateRegister.InputDownsampleAccumulateRegister(self.path, "InputDownsampleAccumulateRegister")
@@ -1181,7 +1183,7 @@ if __name__ == '__main__':
     if simulation_result[0] == 0:
         pass
         #digital_estimator_generator.synthesize_genus()
-        digital_estimator_generator.synthesize_synopsys()
+        #digital_estimator_generator.synthesize_synopsys()
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
         #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "genus")

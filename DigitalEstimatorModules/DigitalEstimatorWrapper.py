@@ -244,7 +244,8 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
 
     """
         if self.configuration_combinatorial_synchronous == "combinatorial":
-            content += """LookUpTableBlock #(
+            if self.configuration_reduce_size_coefficients == False:
+                content += """LookUpTableBlock #(
             .TOTAL_INPUT_WIDTH(LOOKBACK_SIZE * M_NUMBER_DIGITAL_STATES),
             .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
@@ -256,7 +257,53 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .lookup_table_results(lookback_lookup_table_results)
     );
 
-    AdderBlockCombinatorial #(
+    """     
+            elif self.configuration_reduce_size_coefficients == True:
+                for lookback_lut_index in range(len(self.lookback_mapped_reordered_lut_entries)):
+                    lut_offset: int = 0
+                    result_offset: int = 0
+                    for lut_index in range(len(self.lookback_mapped_reordered_bit_widths) - 1, -1, -1):
+                        if lut_index == lookback_lut_index:
+                            break
+                        lut_offset += len(self.lookback_mapped_reordered_lut_entries[lut_index]) * self.lookback_mapped_reordered_bit_widths[lut_index][0]
+                        result_offset += self.lookback_mapped_reordered_bit_widths[lut_index][0]
+                    lut_memory_contents: str = "}"
+                    for entry_index in range(len(self.lookback_mapped_reordered_lut_entries[lookback_lut_index])):
+                        #if self.configuration_reduce_size_luts == True:
+                        lut_memory_contents = f", lookback_lookup_table_entries[{lut_offset + (entry_index + 1) * self.lookback_mapped_reordered_bit_widths[lookback_lut_index][0]} - 1 : {lut_offset + entry_index * self.lookback_mapped_reordered_bit_widths[lookback_lut_index][0]}]" + lut_memory_contents
+                        if self.configuration_reduce_size_luts == False:
+                            if self.lookback_mapped_reordered_lut_entries[lookback_lut_index][len(self.lookback_mapped_reordered_lut_entries[lookback_lut_index]) - 1 - entry_index] >= 0:
+                                lut_memory_contents = f", {{{self.configuration_data_width - self.lookback_mapped_reordered_bit_widths[lookback_lut_index][0]}{{1'b0}}}}" + lut_memory_contents
+                            elif self.lookback_mapped_reordered_lut_entries[lookback_lut_index][len(self.lookback_mapped_reordered_lut_entries[lookback_lut_index]) - 1 - entry_index] < 0:
+                                lut_memory_contents = f", {{{self.configuration_data_width - self.lookback_mapped_reordered_bit_widths[lookback_lut_index][0]}{{1'b1}}}}" + lut_memory_contents
+                    lut_memory_contents = "{" + lut_memory_contents.removeprefix(", ")
+                    content += f"""LookUpTable #(
+            .INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
+            """
+                    if self.configuration_reduce_size_luts == True:
+                        content += f""".DATA_WIDTH({self.lookback_mapped_reordered_bit_widths[lookback_lut_index][0]})
+        """
+                    elif self.configuration_reduce_size_luts == False:
+                        content += f""".DATA_WIDTH({self.configuration_data_width})
+        """
+                    content += f""")
+        lookback_lookup_table_{self.lookback_mapped_reordered_bit_widths[lookback_lut_index][1]} (
+            .rst(rst),
+            .in(lookback_register_distribution[({len(self.lookback_mapped_reordered_bit_widths) - 1 - self.lookback_mapped_reordered_bit_widths[lookback_lut_index][1]} * LOOKUP_TABLE_INPUT_WIDTH) +: LOOKUP_TABLE_INPUT_WIDTH]),
+            .memory({lut_memory_contents}),
+            """
+                    if self.configuration_reduce_size_adders == True:
+                        content += f""".out(lookback_lookup_table_results[{self.lookback_mapped_reordered_bit_widths[lookback_lut_index][0] + result_offset} - 1 : {result_offset}])
+    """
+                    elif self.configuration_reduce_size_adders == False:
+                        content += f""".out(lookback_lookup_table_results[{lookback_lut_index}])
+    """
+                    content += f""");
+                
+    """
+                
+            if self.configuration_reduce_size_adders == False:
+                content += """AdderBlockCombinatorial #(
             .INPUT_COUNT(LOOKBACK_LOOKUP_TABLE_COUNT),
             .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
@@ -266,7 +313,112 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .out(adder_block_lookback_result)
     );
 
-    LookUpTableBlock #(
+    """
+            elif self.configuration_reduce_size_adders == True:
+                lookback_lookup_table_count: int = math.ceil(self.configuration_lookback_length * self.configuration_m_number_of_digital_states / self.configuration_fir_lut_input_width)
+                lookback_adder_stage_count: int = math.ceil(math.log2(lookback_lookup_table_count))
+                #number_of_intermediate_lookback_results: int = 0
+                #for stage_index in range(1, lookback_adder_stage_count + 1, 1):
+                #    number_of_intermediate_lookback_results += math.ceil(lookback_lookup_table_count / 2**stage_index)
+                lookback_intermediate_results_register_width: int = 0
+                stages_output_widths: list[list[int]] = list[list[int]]()
+                for stage_index in range(1, lookback_adder_stage_count + 1, 1):
+                    stage_output_widths: list[int] = list[int]()
+                    if stage_index == 1:
+                        for adder_index in range(math.ceil(len(self.lookback_mapped_reordered_bit_widths) / 2)):
+                            if 2 * adder_index != len(self.lookback_mapped_reordered_bit_widths) - 1:
+                                if(self.lookback_mapped_reordered_bit_widths[2 * adder_index][0] < self.lookback_mapped_reordered_bit_widths[2 * adder_index + 1][0]):
+                                    stage_output_widths.append(self.lookback_mapped_reordered_bit_widths[2 * adder_index + 1][0] + 1)
+                                    lookback_intermediate_results_register_width += self.lookback_mapped_reordered_bit_widths[2 * adder_index + 1][0] + 1
+                                elif(self.lookback_mapped_reordered_bit_widths[2 * adder_index][0] >= self.lookback_mapped_reordered_bit_widths[2 * adder_index + 1][0]):
+                                    stage_output_widths.append(self.lookback_mapped_reordered_bit_widths[2 * adder_index][0] + 1)
+                                    lookback_intermediate_results_register_width += self.lookback_mapped_reordered_bit_widths[2 * adder_index][0] + 1
+                            elif 2 * adder_index == len(self.lookback_mapped_reordered_bit_widths) - 1:
+                                stage_output_widths.append(self.lookback_mapped_reordered_bit_widths[len(self.lookback_mapped_reordered_bit_widths) - 1][0])
+                                lookback_intermediate_results_register_width += self.lookback_mapped_reordered_bit_widths[len(self.lookback_mapped_reordered_bit_widths) - 1][0]
+                    elif stage_index > 1:
+                        for adder_index in range(math.ceil(len(stages_output_widths[stage_index - 2]) / 2)):
+                            if 2 * adder_index != len(stages_output_widths[stage_index - 2]) - 1:
+                                if(stages_output_widths[stage_index - 2][2 * adder_index] < stages_output_widths[stage_index - 2][2 * adder_index + 1]):
+                                    stage_output_widths.append(stages_output_widths[stage_index - 2][2 * adder_index + 1] + 1)
+                                    lookback_intermediate_results_register_width += stages_output_widths[stage_index - 2][2 * adder_index + 1] + 1
+                                elif(stages_output_widths[stage_index - 2][2 * adder_index] >= stages_output_widths[stage_index - 2][2 * adder_index + 1]):
+                                    stage_output_widths.append(stages_output_widths[stage_index - 2][2 * adder_index] + 1)
+                                    lookback_intermediate_results_register_width += stages_output_widths[stage_index - 2][2 * adder_index] + 1
+                            elif 2 * adder_index == len(stages_output_widths[stage_index - 2]) - 1:
+                                stage_output_widths.append(stages_output_widths[stage_index - 2][len(stages_output_widths[stage_index - 2]) - 1])
+                                lookback_intermediate_results_register_width += stages_output_widths[stage_index - 2][len(stages_output_widths[stage_index - 2]) - 1]
+                    stages_output_widths.append(stage_output_widths)                       
+                print(stages_output_widths)
+                print(lookback_intermediate_results_register_width)
+                
+                content += f"""logic [{lookback_intermediate_results_register_width} - 1 : 0] lookback_adder_results;
+    
+    """
+                lookback_total_output_offset: int = 0
+                last_stage_output_offset: int = 0
+                for stage_index in range(1, lookback_adder_stage_count + 1, 1):
+                    if stage_index == 1:
+                        input_offset: int = 0
+                        stage_output_offset: int = 0
+                        for adder_index in range(math.ceil(len(self.lookback_mapped_reordered_bit_widths) / 2)):
+                            if 2 * adder_index != len(self.lookback_mapped_reordered_bit_widths) - 1:
+                                content += f"""AdderCombinatorial #(
+            .INPUT0_WIDTH({self.lookback_mapped_reordered_bit_widths[2 * adder_index][0]}),
+            .INPUT1_WIDTH({self.lookback_mapped_reordered_bit_widths[2 * adder_index + 1][0]})
+        )
+        lookback_adder_synchronous_{stage_index - 1}_{adder_index}(
+            .rst(rst),
+            .input_0(lookback_lookup_table_results[{lookback_luts_result_register_total_width - input_offset} - 1 : {lookback_luts_result_register_total_width - (input_offset + self.lookback_mapped_reordered_bit_widths[2 * adder_index][0])}]),
+            .input_1(lookback_lookup_table_results[{lookback_luts_result_register_total_width - (input_offset + self.lookback_mapped_reordered_bit_widths[2 * adder_index][0])} - 1 : {lookback_luts_result_register_total_width - (input_offset + self.lookback_mapped_reordered_bit_widths[2 * adder_index][0] + self.lookback_mapped_reordered_bit_widths[2 * adder_index + 1][0])}]),
+            .out(lookback_adder_results[{stage_output_offset + stages_output_widths[0][adder_index]} - 1 : {stage_output_offset}])
+    );
+    
+    """
+                                input_offset += self.lookback_mapped_reordered_bit_widths[2 * adder_index][0] + self.lookback_mapped_reordered_bit_widths[2 * adder_index + 1][0]
+                                stage_output_offset += stages_output_widths[0][adder_index]
+                            elif 2 * adder_index == len(self.lookback_mapped_reordered_bit_widths) - 1:
+                                content += f"""assign lookback_adder_results[{stage_output_offset + stages_output_widths[0][adder_index]} - 1 : {stage_output_offset}] = lookback_lookup_table_results[{lookback_luts_result_register_total_width - input_offset} - 1 : {lookback_luts_result_register_total_width - (input_offset + self.lookback_mapped_reordered_bit_widths[2 * adder_index][0])}];
+    
+    """
+                                input_offset += self.lookback_mapped_reordered_bit_widths[2 * adder_index][0]
+                                stage_output_offset += stages_output_widths[0][adder_index]
+                        lookback_total_output_offset += stage_output_offset
+                        last_stage_output_offset = stage_output_offset
+                    elif stage_index > 1:
+                        input_offset: int = 0
+                        stage_output_offset: int = 0
+                        for adder_index in range(math.ceil(len(stages_output_widths[stage_index - 2]) / 2)):
+                            if 2 * adder_index != len(stages_output_widths[stage_index - 2]) - 1:
+                                content += f"""AdderCombinatorial #(
+            .INPUT0_WIDTH({stages_output_widths[stage_index - 2][2 * adder_index]}),
+            .INPUT1_WIDTH({stages_output_widths[stage_index - 2][2 * adder_index + 1]})
+        )
+        lookback_adder_synchronous_{stage_index - 1}_{adder_index}(
+            .rst(rst),
+            .input_0(lookback_adder_results[{(lookback_total_output_offset - last_stage_output_offset) + input_offset + stages_output_widths[stage_index - 2][2 * adder_index]} - 1 : {(lookback_total_output_offset - last_stage_output_offset) + input_offset}]),
+            .input_1(lookback_adder_results[{(lookback_total_output_offset - last_stage_output_offset) + input_offset + stages_output_widths[stage_index - 2][2 * adder_index] + stages_output_widths[stage_index - 2][2 * adder_index + 1]} - 1 : {(lookback_total_output_offset - last_stage_output_offset) + input_offset + stages_output_widths[stage_index - 2][2 * adder_index]}]),
+            .out(lookback_adder_results[{lookback_total_output_offset + stage_output_offset + stages_output_widths[stage_index - 1][adder_index]} - 1 : {lookback_total_output_offset + stage_output_offset}])
+    );
+    
+    """
+                                input_offset += stages_output_widths[stage_index - 2][2 * adder_index] + stages_output_widths[stage_index - 2][2 * adder_index + 1]
+                                stage_output_offset += stages_output_widths[stage_index - 1][adder_index]
+                            elif 2 * adder_index == len(stages_output_widths[stage_index - 2]) - 1:
+                                content += f"""assign lookback_adder_results[{lookback_total_output_offset + stage_output_offset + stages_output_widths[stage_index - 1][adder_index]} - 1 : {lookback_total_output_offset + stage_output_offset}] = lookback_adder_results[{(lookback_total_output_offset - last_stage_output_offset) + input_offset + stages_output_widths[stage_index - 2][2 * adder_index]} - 1 : {(lookback_total_output_offset - last_stage_output_offset) + input_offset}];
+    
+    """
+                                input_offset += stages_output_widths[stage_index - 2][2 * adder_index]
+                                stage_output_offset += stages_output_widths[stage_index - 1][adder_index]
+                        lookback_total_output_offset += stage_output_offset
+                        last_stage_output_offset = stage_output_offset
+                content += f"""logic signed [{stages_output_widths[len(stages_output_widths) - 1][0]} - 1 : 0] adder_block_lookback_result;
+    assign adder_block_lookback_result = lookback_adder_results[{lookback_intermediate_results_register_width} - 1 : {lookback_intermediate_results_register_width - stages_output_widths[len(stages_output_widths) - 1][0]}];
+    
+    """
+            
+            if self.configuration_reduce_size_coefficients == False:
+                content += """LookUpTableBlock #(
             .TOTAL_INPUT_WIDTH(LOOKAHEAD_SIZE * M_NUMBER_DIGITAL_STATES),
             .LOOKUP_TABLE_INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
             .LOOKUP_TABLE_DATA_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
@@ -278,7 +430,53 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
             .lookup_table_results(lookahead_lookup_table_results)
     );
 
-    AdderBlockCombinatorial #(
+    """     
+            elif self.configuration_reduce_size_coefficients == True:
+                for lookahead_lut_index in range(len(self.lookahead_mapped_reordered_lut_entries)):
+                    lut_offset: int = 0
+                    result_offset: int = 0
+                    for lut_index in range(len(self.lookahead_mapped_reordered_bit_widths) - 1, -1, -1):
+                        if lut_index == lookahead_lut_index:
+                            break
+                        lut_offset += len(self.lookahead_mapped_reordered_lut_entries[lut_index]) * self.lookahead_mapped_reordered_bit_widths[lut_index][0]
+                        result_offset += self.lookback_mapped_reordered_bit_widths[lut_index][0]
+                    lut_memory_contents: str = "}"
+                    for entry_index in range(len(self.lookahead_mapped_reordered_lut_entries[lookahead_lut_index])):
+                        #if self.configuration_reduce_size_luts == True:
+                        lut_memory_contents = f", lookahead_lookup_table_entries[{lut_offset + (entry_index + 1) * self.lookahead_mapped_reordered_bit_widths[lookahead_lut_index][0]} - 1 : {lut_offset + entry_index * self.lookahead_mapped_reordered_bit_widths[lookahead_lut_index][0]}]" + lut_memory_contents
+                        if self.configuration_reduce_size_luts == False:
+                            if self.lookahead_mapped_reordered_lut_entries[lookahead_lut_index][len(self.lookahead_mapped_reordered_lut_entries[lookahead_lut_index]) - 1 - entry_index] >= 0:
+                                lut_memory_contents = f", {{{self.configuration_data_width - self.lookahead_mapped_reordered_bit_widths[lookahead_lut_index][0]}{{1'b0}}}}" + lut_memory_contents
+                            elif self.lookahead_mapped_reordered_lut_entries[lookahead_lut_index][len(self.lookahead_mapped_reordered_lut_entries[lookahead_lut_index]) - 1 - entry_index] < 0:
+                                lut_memory_contents = f", {{{self.configuration_data_width - self.lookahead_mapped_reordered_bit_widths[lookahead_lut_index][0]}{{1'b1}}}}" + lut_memory_contents
+                    lut_memory_contents = "{" + lut_memory_contents.removeprefix(", ")
+                    content += f"""LookUpTable #(
+            .INPUT_WIDTH(LOOKUP_TABLE_INPUT_WIDTH),
+            """
+                    if self.configuration_reduce_size_luts == True:
+                        content += f""".DATA_WIDTH({self.lookahead_mapped_reordered_bit_widths[lut_index][0]})
+        """
+                    elif self.configuration_reduce_size_luts == False:
+                        content += f""".DATA_WIDTH({self.configuration_data_width})
+        """
+                    content += f""")
+        lookahead_lookup_table_{self.lookahead_mapped_reordered_bit_widths[lookahead_lut_index][1]} (
+            .rst(rst),
+            .in(lookahead_register_distribution[({len(self.lookahead_mapped_reordered_bit_widths) - 1 - self.lookahead_mapped_reordered_bit_widths[lookahead_lut_index][1]} * LOOKUP_TABLE_INPUT_WIDTH) +: LOOKUP_TABLE_INPUT_WIDTH]),
+            .memory({lut_memory_contents}),
+            """
+                    if self.configuration_reduce_size_adders == True:
+                        content += f""".out(lookahead_lookup_table_results[{self.lookahead_mapped_reordered_bit_widths[lookahead_lut_index][0] + result_offset} - 1 : {result_offset}])
+    """
+                    elif self.configuration_reduce_size_adders == False:
+                        content += f""".out(lookahead_lookup_table_results[{lookahead_lut_index}])
+    """
+                    content += f""");
+                
+    """
+            
+            if self.configuration_reduce_size_adders == False:
+                content += """AdderBlockCombinatorial #(
             .INPUT_COUNT(LOOKAHEAD_LOOKUP_TABLE_COUNT),
             .INPUT_WIDTH(LOOKUP_TABLE_DATA_WIDTH)
         )
@@ -289,6 +487,109 @@ class DigitalEstimatorWrapper(SystemVerilogModule.SystemVerilogModule):
     );
 
     """
+            elif self.configuration_reduce_size_adders == True:
+                lookahead_lookup_table_count: int = math.ceil(self.configuration_lookahead_length * self.configuration_m_number_of_digital_states / self.configuration_fir_lut_input_width)
+                lookahead_adder_stage_count: int = math.ceil(math.log2(lookahead_lookup_table_count))
+                #number_of_intermediate_lookahead_results: int = 0
+                #for stage_index in range(1, lookahead_adder_stage_count + 1, 1):
+                #    number_of_intermediate_lookahead_results += math.ceil(lookahead_lookup_table_count / 2**stage_index)
+                lookahead_intermediate_results_register_width: int = 0
+                stages_output_widths: list[list[int]] = list[list[int]]()
+                for stage_index in range(1, lookahead_adder_stage_count + 1, 1):
+                    stage_output_widths: list[int] = list[int]()
+                    if stage_index == 1:
+                        for adder_index in range(math.ceil(len(self.lookahead_mapped_reordered_bit_widths) / 2)):
+                            if 2 * adder_index != len(self.lookahead_mapped_reordered_bit_widths) - 1:
+                                if(self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0] < self.lookahead_mapped_reordered_bit_widths[2 * adder_index + 1][0]):
+                                    stage_output_widths.append(self.lookahead_mapped_reordered_bit_widths[2 * adder_index + 1][0] + 1)
+                                    lookahead_intermediate_results_register_width += self.lookahead_mapped_reordered_bit_widths[2 * adder_index + 1][0] + 1
+                                elif(self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0] >= self.lookahead_mapped_reordered_bit_widths[2 * adder_index + 1][0]):
+                                    stage_output_widths.append(self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0] + 1)
+                                    lookahead_intermediate_results_register_width += self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0] + 1
+                            elif 2 * adder_index == len(self.lookahead_mapped_reordered_bit_widths) - 1:
+                                stage_output_widths.append(self.lookahead_mapped_reordered_bit_widths[len(self.lookahead_mapped_reordered_bit_widths) - 1][0])
+                                lookahead_intermediate_results_register_width += self.lookahead_mapped_reordered_bit_widths[len(self.lookahead_mapped_reordered_bit_widths) - 1][0]
+                    elif stage_index > 1:
+                        for adder_index in range(math.ceil(len(stages_output_widths[stage_index - 2]) / 2)):
+                            if 2 * adder_index != len(stages_output_widths[stage_index - 2]) - 1:
+                                if(stages_output_widths[stage_index - 2][2 * adder_index] < stages_output_widths[stage_index - 2][2 * adder_index + 1]):
+                                    stage_output_widths.append(stages_output_widths[stage_index - 2][2 * adder_index + 1] + 1)
+                                    lookahead_intermediate_results_register_width += stages_output_widths[stage_index - 2][2 * adder_index + 1] + 1
+                                elif(stages_output_widths[stage_index - 2][2 * adder_index] >= stages_output_widths[stage_index - 2][2 * adder_index + 1]):
+                                    stage_output_widths.append(stages_output_widths[stage_index - 2][2 * adder_index] + 1)
+                                    lookahead_intermediate_results_register_width += stages_output_widths[stage_index - 2][2 * adder_index] + 1
+                            elif 2 * adder_index == len(stages_output_widths[stage_index - 2]) - 1:
+                                stage_output_widths.append(stages_output_widths[stage_index - 2][len(stages_output_widths[stage_index - 2]) - 1])
+                                lookahead_intermediate_results_register_width += stages_output_widths[stage_index - 2][len(stages_output_widths[stage_index - 2]) - 1]
+                    stages_output_widths.append(stage_output_widths)                       
+                print(stages_output_widths)
+                print(lookahead_intermediate_results_register_width)
+                
+                content += f"""logic [{lookahead_intermediate_results_register_width} - 1 : 0] lookahead_adder_results;
+    
+    """
+                lookahead_total_output_offset: int = 0
+                last_stage_output_offset: int = 0
+                for stage_index in range(1, lookahead_adder_stage_count + 1, 1):
+                    if stage_index == 1:
+                        input_offset: int = 0
+                        stage_output_offset: int = 0
+                        for adder_index in range(math.ceil(len(self.lookahead_mapped_reordered_bit_widths) / 2)):
+                            if 2 * adder_index != len(self.lookahead_mapped_reordered_bit_widths) - 1:
+                                content += f"""AdderCombinatorial #(
+            .INPUT0_WIDTH({self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0]}),
+            .INPUT1_WIDTH({self.lookahead_mapped_reordered_bit_widths[2 * adder_index + 1][0]})
+        )
+        lookahead_adder_synchronous_{stage_index - 1}_{adder_index}(
+            .rst(rst),
+            .input_0(lookahead_lookup_table_results[{lookahead_luts_result_register_total_width - input_offset} - 1 : {lookahead_luts_result_register_total_width - (input_offset + self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0])}]),
+            .input_1(lookahead_lookup_table_results[{lookahead_luts_result_register_total_width - (input_offset + self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0])} - 1 : {lookahead_luts_result_register_total_width - (input_offset + self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0] + self.lookahead_mapped_reordered_bit_widths[2 * adder_index + 1][0])}]),
+            .out(lookahead_adder_results[{stage_output_offset + stages_output_widths[0][adder_index]} - 1 : {stage_output_offset}])
+    );
+    
+    """
+                                input_offset += self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0] + self.lookahead_mapped_reordered_bit_widths[2 * adder_index + 1][0]
+                                stage_output_offset += stages_output_widths[0][adder_index]
+                            elif 2 * adder_index == len(self.lookahead_mapped_reordered_bit_widths) - 1:
+                                content += f""" assign lookahead_adder_results[{stage_output_offset + stages_output_widths[0][adder_index]} - 1 : {stage_output_offset}] = lookahead_lookup_table_results[{lookahead_luts_result_register_total_width - input_offset} - 1 : {lookahead_luts_result_register_total_width - (input_offset + self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0])}];
+    
+    """
+                                input_offset += self.lookahead_mapped_reordered_bit_widths[2 * adder_index][0]
+                                stage_output_offset += stages_output_widths[0][adder_index]
+                        lookahead_total_output_offset += stage_output_offset
+                        last_stage_output_offset = stage_output_offset
+                    elif stage_index > 1:
+                        input_offset: int = 0
+                        stage_output_offset: int = 0
+                        for adder_index in range(math.ceil(len(stages_output_widths[stage_index - 2]) / 2)):
+                            if 2 * adder_index != len(stages_output_widths[stage_index - 2]) - 1:
+                                content += f"""AdderCombinatorial #(
+            .INPUT0_WIDTH({stages_output_widths[stage_index - 2][2 * adder_index]}),
+            .INPUT1_WIDTH({stages_output_widths[stage_index - 2][2 * adder_index + 1]})
+        )
+        lookahead_adder_synchronous_{stage_index - 1}_{adder_index}(
+            .rst(rst),
+            .input_0(lookahead_adder_results[{(lookahead_total_output_offset - last_stage_output_offset) + input_offset + stages_output_widths[stage_index - 2][2 * adder_index]} - 1 : {(lookahead_total_output_offset - last_stage_output_offset) + input_offset}]),
+            .input_1(lookahead_adder_results[{(lookahead_total_output_offset - last_stage_output_offset) + input_offset + stages_output_widths[stage_index - 2][2 * adder_index] + stages_output_widths[stage_index - 2][2 * adder_index + 1]} - 1 : {(lookahead_total_output_offset - last_stage_output_offset) + input_offset + stages_output_widths[stage_index - 2][2 * adder_index]}]),
+            .out(lookahead_adder_results[{lookahead_total_output_offset + stage_output_offset + stages_output_widths[stage_index - 1][adder_index]} - 1 : {lookahead_total_output_offset + stage_output_offset}])
+    );
+    
+    """
+                                input_offset += stages_output_widths[stage_index - 2][2 * adder_index] + stages_output_widths[stage_index - 2][2 * adder_index + 1]
+                                stage_output_offset += stages_output_widths[stage_index - 1][adder_index]
+                            elif 2 * adder_index == len(stages_output_widths[stage_index - 2]) - 1:
+                                content += f"""assign lookahead_adder_results[{lookahead_total_output_offset + stage_output_offset + stages_output_widths[stage_index - 1][adder_index]} - 1 : {lookahead_total_output_offset + stage_output_offset}] = lookahead_adder_results[{(lookahead_total_output_offset - last_stage_output_offset) + input_offset + stages_output_widths[stage_index - 2][2 * adder_index]} - 1 : {(lookahead_total_output_offset - last_stage_output_offset) + input_offset}];
+    
+    """
+                                input_offset += stages_output_widths[stage_index - 2][2 * adder_index]
+                                stage_output_offset += stages_output_widths[stage_index - 1][adder_index]
+                        lookahead_total_output_offset += stage_output_offset
+                        last_stage_output_offset = stage_output_offset
+                content += f"""logic signed [{stages_output_widths[len(stages_output_widths) - 1][0]} - 1 : 0] adder_block_lookahead_result;
+    assign adder_block_lookahead_result = lookahead_adder_results[{lookahead_intermediate_results_register_width} - 1 : {lookahead_intermediate_results_register_width - stages_output_widths[len(stages_output_widths) - 1][0]}];
+    
+    """
+            
         elif self.configuration_combinatorial_synchronous == "synchronous":
             if self.configuration_reduce_size_coefficients == False:
                 content += """LookUpTableBlockSynchronous #(
