@@ -253,9 +253,11 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     initial begin
         """
         if self.configuration_mapped_simulation == True:
-            content += f"""static int digital_estimation_output_file = $fopen("./digital_estimation_mapped_{self.configuration_synthesis_program}.csv", "w");"""
+            content += f"""static int digital_estimation_output_file = $fopen("./digital_estimation_mapped_{self.configuration_synthesis_program}_{self.configuration_simulation_program}.csv", "w");
+        """
         elif self.configuration_placedandrouted_simulation == True:
-            content += f"""static int digital_estimation_output_file = $fopen("./digital_estimation_placedandrouted_innovus_{self.configuration_synthesis_program}.csv", "w");"""
+            content += f"""static int digital_estimation_output_file = $fopen("./digital_estimation_placedandrouted_innovus_{self.configuration_synthesis_program}_{self.configuration_simulation_program}.csv", "w");
+        """
         else:
             content += """static int digital_estimation_output_file = $fopen("./digital_estimation.csv", "w");
         """

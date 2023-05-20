@@ -866,7 +866,7 @@ class DigitalEstimatorGenerator():
         self.generate_vcs_mapped_options_file(name = "vcs_mapped_options_" + synthesis_program, synthesis_program = synthesis_program)
         sim_vcs_mapped = subprocess.Popen(["./sim_vcs_mapped_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
         sim_vcs_mapped.wait()
-        os.rename(self.path + "/digital_estimation_mapped_" + synthesis_program + ".csv", self.path + "/digital_estimation_mapped_" + synthesis_program + ".vcs.csv")
+        #os.rename(self.path + "/digital_estimation_mapped_" + synthesis_program + ".csv", self.path + "/digital_estimation_mapped_" + synthesis_program + ".vcs.csv")
 
     def copy_mapped_design_genus(self):
         #shutil.copyfile("../df/out/" + self.top_module_name + "/syn/" + self.top_module_name + ".v", self.path + "/" + self.top_module_name + ".mapped.genus.v")
@@ -1191,7 +1191,7 @@ if __name__ == '__main__':
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
         #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
-        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
+        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
         #digital_estimator_generator.placeandroute_innovus(synthesis_program = "genus")
         #digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
         

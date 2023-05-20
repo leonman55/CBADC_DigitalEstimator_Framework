@@ -86,30 +86,30 @@ def test_digital_estimator_generator(
         #digital_estimator_generator.synthesize_genus()
         #digital_estimator_generator.synthesize_synopsys()
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
-        digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
+        #digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
         #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "genus")
-        digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
+        #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus")
-        digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
+        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
         #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
-        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
+        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.vcs.csv", synthesis_program = "synopsys")
         #digital_estimator_generator.placeandroute_innovus(synthesis_program = "genus")
-        digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
+        #digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
         
         #digital_estimator_generator.simulate_placedandrouted_design("genus")
         #digital_estimator_generator.estimate_power_primetime_placeandroute("genus")
-        digital_estimator_generator.simulate_placedandrouted_design("synopsys")
-        digital_estimator_generator.estimate_power_primetime_placeandroute("synopsys")
+        #digital_estimator_generator.simulate_placedandrouted_design("synopsys")
+        #digital_estimator_generator.estimate_power_primetime_placeandroute("synopsys")
 
 
 
 test_non_reduced_configurations_0 = [
-        #(3, 23, 22, 128, 128, 4, "binary", "synchronous", "variable", False, False, False),
+        (3, 23, 22, 128, 128, 4, "binary", "synchronous", "variable", False, False, False),
         (4, 15, 22, 160, 160, 4, "binary", "synchronous", "variable", False, False, False),
-        (5, 12, 22, 160, 160, 4, "binary", "synchronous", "variable", False, False, False)
-        #(6, 9, 22, 224, 224, 4, "binary", "synchronous", "variable", False, False, False),
-        #(7, 8, 22, 224, 224, 4, "binary", "synchronous", "variable", False, False, False),
-        #(8, 7, 22, 256, 256, 4, "binary", "synchronous", "variable", False, False, False)
+        (5, 12, 22, 160, 160, 4, "binary", "synchronous", "variable", False, False, False),
+        (6, 9, 22, 224, 224, 4, "binary", "synchronous", "variable", False, False, False),
+        (7, 8, 22, 224, 224, 4, "binary", "synchronous", "variable", False, False, False),
+        (8, 7, 22, 256, 256, 4, "binary", "synchronous", "variable", False, False, False)
     ]
 
 @pytest.mark.test_non_reduced_configurations_0
@@ -119,8 +119,8 @@ def test_non_reduced_configurations_0(n_number_of_analog_states: int, oversampli
 
 
 test_reduced_configurations_0 = [
-        (3, 23, 22, 128, 128, 4, "binary", "synchronous", "variable", True, True, True),
-        (4, 15, 22, 160, 160, 4, "binary", "synchronous", "variable", True, True, True),
+        #(3, 23, 22, 128, 128, 4, "binary", "synchronous", "variable", True, True, True),
+        #(4, 15, 22, 160, 160, 4, "binary", "synchronous", "variable", True, True, True),
         (5, 12, 22, 160, 160, 4, "binary", "synchronous", "variable", True, True, True),
         (6, 9, 22, 224, 224, 4, "binary", "synchronous", "variable", True, True, True),
         (7, 8, 22, 224, 224, 4, "binary", "synchronous", "variable", True, True, True),
