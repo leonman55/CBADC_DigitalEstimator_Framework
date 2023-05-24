@@ -270,7 +270,7 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
         if self.configuration_reduce_size_coefficients == True:
             content += """$fwrite(digital_estimation_output_file, "0.0, 0.0, 0.0\\n");
         """
-        content += """$fwrite(digital_estimation_output_file, "0.0, 0.0, 0.0\\n");
+        content += """//$fwrite(digital_estimation_output_file, "0.0, 0.0, 0.0\\n");
 
         """
         if self.configuration_coefficients_variable_fixed == "variable":

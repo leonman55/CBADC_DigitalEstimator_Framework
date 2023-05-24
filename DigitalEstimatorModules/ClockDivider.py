@@ -47,7 +47,7 @@ class ClockDivider(SystemVerilogModule.SystemVerilogModule):
         end
     end
 
-    always_comb begin
+    /*always_comb begin
         if(rst) begin
             clk_downsample = 1'b0;
         end
@@ -57,6 +57,20 @@ class ClockDivider(SystemVerilogModule.SystemVerilogModule):
             end
             else begin
                 clk_downsample = 1'b1;
+            end
+        end
+    end*/
+    
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            clk_downsample <= 1'b0;
+        end
+        else begin
+            if(edge_counter < ((EDGE_COUNTER_TOP_VALUE + 1) / 2)) begin
+                clk_downsample <= 1'b0;
+            end
+            else begin
+                clk_downsample <= 1'b1;
             end
         end
     end

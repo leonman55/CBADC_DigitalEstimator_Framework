@@ -103,9 +103,9 @@ class DigitalEstimatorGenerator():
     """
 
     #path: str = "../df/sim/SystemVerilogFiles"
-    path: str = "/local_work/leonma/sim/SystemVerilogFiles24"
+    path: str = "/local_work/leonma/sim/SystemVerilogFiles1"
     #path_synthesis: str = "../df/src/SystemVerilogFiles"
-    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles24"
+    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles1"
 
     scripts_base_folder = "../df/scripts"
 
@@ -121,13 +121,13 @@ class DigitalEstimatorGenerator():
     #configuration_lookahead_length: int = 256
     configuration_fir_data_width: int = 22
     #configuration_fir_data_width: int = 25
-    configuration_fir_lut_input_width: int = 4
+    configuration_fir_lut_input_width: int = 2
     configuration_simulation_length: int = 1 << 12
     configuration_over_sample_rate: int = 23
     #configuration_over_sample_rate: int = 8
     configuration_down_sample_rate: int = configuration_over_sample_rate
     configuration_counter_type: str = "binary"
-    configuration_combinatorial_synchronous: str = "combinatorial"
+    configuration_combinatorial_synchronous: str = "synchronous"
     configuration_required_snr_db: float = 55
     configuration_coefficients_variable_fixed: str = "variable"
     configuration_reduce_size_coefficients: bool = True
@@ -937,16 +937,21 @@ class DigitalEstimatorGenerator():
     def copy_primetime_power_tcl_script(self):
         shutil.copyfile(self.scripts_base_folder + "/primetime_power_template.tcl", self.path + "/primetime_power_estimation.tcl")
 
-    def generate_primetime_power_script(self, synthesis_program: str = "genus"):
+    def generate_primetime_power_script(self, synthesis_program: str = "genus", simulation_program: str = "xrun"):
         commands: list[str] = list[str]()
         commands.append("SYNTHESIS_PROGRAM=" + synthesis_program + "\n")
+        commands.append("SIMULATION_PROGRAM=" + simulation_program + "\n")
         commands.append("MAPPED_DESIGN_FILE=./" + self.top_module_name + ".mapped." + synthesis_program + ".v\n")
         commands.append("MAPPED_DESIGN_NAME=" + self.top_module_name + "\n")
         commands.append("SDF_FILE=./" + self.top_module_name + "." + synthesis_program + ".sdf\n")
         commands.append("SDC_FILE=./" + self.top_module_name + "." + synthesis_program + ".sdc\n")
         commands.append("SPEF_FILE=./" + self.top_module_name + "." + synthesis_program + ".spef\n")
-        commands.append("VCD_FILE=./mapped_signal_activity_" + synthesis_program + ".vcd\n")
+        if simulation_program == "xrun":
+            commands.append("VCD_FILE=./mapped_signal_activity_" + synthesis_program + ".vcd\n")
+        elif simulation_program == "vcs":
+            commands.append("VCD_FILE=./mapped_signal_activity_" + synthesis_program + "_" + simulation_program + ".vcd\n")
         commands.append("export SYNTHESIS_PROGRAM\n")
+        commands.append("export SIMULATION_PROGRAM\n")
         commands.append("export MAPPED_DESIGN_FILE\n")
         commands.append("export MAPPED_DESIGN_NAME\n")
         commands.append("export SDF_FILE\n")
@@ -955,6 +960,7 @@ class DigitalEstimatorGenerator():
         commands.append("export VCD_FILE\n")
         commands.append("primetime -file primetime_power_estimation.tcl\n")
         commands.append("SYNTHESIS_PROGRAM=\n")
+        commands.append("SIMULATION_PROGRAM=\n")
         commands.append("MAPPED_DESIGN_FILE=\n")
         commands.append("MAPPED_DESIGN_NAME=\n")
         commands.append("SDF_FILE=\n")
@@ -965,13 +971,13 @@ class DigitalEstimatorGenerator():
             primetime_power_script.writelines(commands)
             Path(self.path + "/run_primetime_power_estimation_" + synthesis_program + ".sh").chmod(S_IRWXU)
 
-    def estimate_power_primetime(self, synthesis_program: str = "genus"):
+    def estimate_power_primetime(self, synthesis_program: str = "genus", simulation_program: str = "xrun"):
         if synthesis_program == "genus":
             self.copy_annotation_files_genus()
         elif synthesis_program == "synopsys":
             self.copy_annotation_files_synopsys()
         self.copy_primetime_power_tcl_script()
-        self.generate_primetime_power_script(synthesis_program = synthesis_program)
+        self.generate_primetime_power_script(synthesis_program = synthesis_program, simulation_program = simulation_program)
         power_estimation_primetime = subprocess.Popen(["./run_primetime_power_estimation_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
         power_estimation_primetime.wait()
 
@@ -1024,7 +1030,7 @@ class DigitalEstimatorGenerator():
         placeandroute_innovus = subprocess.Popen(["./pnr_innovus_synthesis_from_" + synthesis_program], cwd = self.path_synthesis, text = True, shell = True)
         placeandroute_innovus.wait()
             
-    def generate_testbench_placedandrouted_design(self, synthesis_program: str = "genus"):
+    def generate_testbench_placedandrouted_design(self, synthesis_program: str = "genus", simulation_program: str = "xrun"):
         digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, name = "DigitalEstimatorTestbench_placedandrouted_innovus_" + synthesis_program)
         digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = self.configuration_number_of_timesteps_in_clock_cycle
         digital_estimator_testbench.configuration_lookback_length = self.configuration_lookback_length
@@ -1042,7 +1048,7 @@ class DigitalEstimatorGenerator():
         digital_estimator_testbench.configuration_coefficients_variable_fixed = self.configuration_coefficients_variable_fixed
         digital_estimator_testbench.configuration_mapped_simulation = False
         digital_estimator_testbench.configuration_placedandrouted_simulation = True
-        digital_estimator_testbench.configuration_simulation_program = "xrun"
+        digital_estimator_testbench.configuration_simulation_program = simulation_program
         digital_estimator_testbench.configuration_synthesis_program = synthesis_program
         digital_estimator_testbench.top_module_name = self.top_module_name
         digital_estimator_testbench.configuration_reduce_size_coefficients = self.configuration_reduce_size_coefficients
@@ -1183,15 +1189,19 @@ if __name__ == '__main__':
     if simulation_result[0] == 0:
         pass
         #digital_estimator_generator.synthesize_genus()
-        #digital_estimator_generator.synthesize_synopsys()
+        digital_estimator_generator.synthesize_synopsys()
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
         #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "genus")
-        #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
-        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus")
-        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys")
-        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus.csv", synthesis_program = "genus")
-        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys.csv", synthesis_program = "synopsys")
+        digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_xrun.csv", synthesis_program = "genus")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_vcs.csv", synthesis_program = "genus")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_xrun.csv", synthesis_program = "synopsys")
+        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_vcs.csv", synthesis_program = "synopsys")
+        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus", simulation_program = "xrun")
+        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus", simulation_program = "vcs")
+        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys", simulation_program = "xrun")
+        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys", simulation_program = "vcs")
         #digital_estimator_generator.placeandroute_innovus(synthesis_program = "genus")
         #digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
         
