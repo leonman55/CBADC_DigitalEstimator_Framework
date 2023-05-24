@@ -419,6 +419,19 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     );
 
     """
+                elif self.configuration_reduce_size_adders == True:
+                    content += """bind AdderCombinatorial AdderCombinatorialAssertions #(
+            .INPUT0_WIDTH(INPUT0_WIDTH),
+            .INPUT1_WIDTH(INPUT1_WIDTH)
+        )
+        adder_combinatorial_bind (
+            .rst(rst),
+            .input_0(input_0),
+            .input_1(input_1),
+            .out(out)
+    );
+    
+    """
                 content += """bind LookUpTable LookUpTableAssertions #(
             .INPUT_WIDTH(INPUT_WIDTH),
             .DATA_WIDTH(DATA_WIDTH)
@@ -470,6 +483,20 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
             .out(out)
     );
 
+    """
+                elif self.configuration_reduce_size_adders == True:
+                    content += """bind AdderSynchronous AdderSynchronousAssertions #(
+            .INPUT0_WIDTH(INPUT0_WIDTH),
+            .INPUT1_WIDTH(INPUT1_WIDTH)
+        )
+        adder_synchronous_bind (
+            .rst(rst),
+            .clk(clk),
+            .input_0(input_0),
+            .input_1(input_1),
+            .out(out)
+    );
+    
     """
                 content += """bind LookUpTableSynchronous LookUpTableSynchronousAssertions #(
             .INPUT_WIDTH(INPUT_WIDTH),

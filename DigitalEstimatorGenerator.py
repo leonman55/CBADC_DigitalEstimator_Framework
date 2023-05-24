@@ -34,7 +34,9 @@ import DigitalEstimatorModules.AdderBlockSynchronous
 import DigitalEstimatorModules.LookUpTableSynchronous
 import DigitalEstimatorModules.LookUpTableBlockSynchronous
 import DigitalEstimatorVerificationModules.AdderCombinatorialAssertions
+import DigitalEstimatorVerificationModules.AdderCombinatorialReducedSizeAssertions
 import DigitalEstimatorVerificationModules.AdderSynchronousAssertions
+import DigitalEstimatorVerificationModules.AdderSynchronousReducedSizeAssertions
 import DigitalEstimatorVerificationModules.AdderBlockCombinatorialAssertions
 import DigitalEstimatorVerificationModules.AdderBlockSynchronousAssertions
 import DigitalEstimatorVerificationModules.LookUpTableAssertions
@@ -103,9 +105,9 @@ class DigitalEstimatorGenerator():
     """
 
     #path: str = "../df/sim/SystemVerilogFiles"
-    path: str = "/local_work/leonma/sim/SystemVerilogFiles1"
+    path: str = "/local_work/leonma/sim/SystemVerilogFiles0"
     #path_synthesis: str = "../df/src/SystemVerilogFiles"
-    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles1"
+    path_synthesis: str = "/local_work/leonma/src/SystemVerilogFiles0"
 
     scripts_base_folder = "../df/scripts"
 
@@ -115,9 +117,9 @@ class DigitalEstimatorGenerator():
     configuration_n_number_of_analog_states: int = 3
     #configuration_n_number_of_analog_states: int = 7
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
-    configuration_lookback_length: int = 128
+    configuration_lookback_length: int = 32
     #configuration_lookback_length: int = 256
-    configuration_lookahead_length: int = 128
+    configuration_lookahead_length: int = 32
     #configuration_lookahead_length: int = 256
     configuration_fir_data_width: int = 22
     #configuration_fir_data_width: int = 25
@@ -127,9 +129,9 @@ class DigitalEstimatorGenerator():
     #configuration_over_sample_rate: int = 8
     configuration_down_sample_rate: int = configuration_over_sample_rate
     configuration_counter_type: str = "binary"
-    configuration_combinatorial_synchronous: str = "synchronous"
+    configuration_combinatorial_synchronous: str = "combinatorial"
     configuration_required_snr_db: float = 55
-    configuration_coefficients_variable_fixed: str = "variable"
+    configuration_coefficients_variable_fixed: str = "fixed"
     configuration_reduce_size_coefficients: bool = True
     configuration_reduce_size_luts: bool = True
     configuration_reduce_size_adders: bool = True
@@ -365,14 +367,21 @@ class DigitalEstimatorGenerator():
         self.module_list.append(valid_counter)
 
         if self.configuration_combinatorial_synchronous == "combinatorial":
-            adder_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderCombinatorialAssertions.AdderCombinatorialAssertions(self.path, "AdderCombinatorialAssertions")
-            adder_combinatorial_assertions.configuration_adder_input_width = self.configuration_fir_lut_input_width
-            adder_combinatorial_assertions.generate()
-            self.simulation_module_list.append(adder_combinatorial_assertions)
+            if self.configuration_reduce_size_adders == False:
+                adder_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderCombinatorialAssertions.AdderCombinatorialAssertions(self.path, "AdderCombinatorialAssertions")
+                adder_combinatorial_assertions.configuration_adder_input_width = self.configuration_fir_lut_input_width
+                adder_combinatorial_assertions.generate()
+                self.simulation_module_list.append(adder_combinatorial_assertions)
 
-            adder_block_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderBlockCombinatorialAssertions.AdderBlockCombinatorialAssertions(self.path, "AdderBlockCombinatorialAssertions")
-            adder_block_combinatorial_assertions.generate()
-            self.simulation_module_list.append(adder_block_combinatorial_assertions)
+                adder_block_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderBlockCombinatorialAssertions.AdderBlockCombinatorialAssertions(self.path, "AdderBlockCombinatorialAssertions")
+                adder_block_combinatorial_assertions.generate()
+                self.simulation_module_list.append(adder_block_combinatorial_assertions)
+            elif self.configuration_reduce_size_adders == True:
+                adder_combinatorial_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderCombinatorialReducedSizeAssertions.AdderCombinatorialReducedSizeAssertions(self.path, "AdderCombinatorialAssertions")
+                adder_combinatorial_assertions.configuration_input0_width = self.configuration_fir_data_width
+                adder_combinatorial_assertions.configuration_input1_width = self.configuration_fir_data_width
+                adder_combinatorial_assertions.generate()
+                self.simulation_module_list.append(adder_combinatorial_assertions)
 
             look_up_table_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableAssertions.LookUpTableAssertions(self.path, "LookUpTableAssertions")
             look_up_table_assertions.configuration_input_width = self.configuration_fir_lut_input_width
@@ -380,20 +389,26 @@ class DigitalEstimatorGenerator():
             look_up_table_assertions.generate()
             self.simulation_module_list.append(look_up_table_assertions)
 
-            look_up_table_block_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableBlockAssertions.LookUpTableBlockAssertions(self.path, "LookUpTableBlockAssertions")
-            look_up_table_block_assertions.generate()
-            self.simulation_module_list.append(look_up_table_block_assertions)
+            if self.configuration_reduce_size_coefficients == False:
+                look_up_table_block_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableBlockAssertions.LookUpTableBlockAssertions(self.path, "LookUpTableBlockAssertions")
+                look_up_table_block_assertions.generate()
+                self.simulation_module_list.append(look_up_table_block_assertions)
         else:
             if self.configuration_reduce_size_adders == False:
                 adder_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderSynchronousAssertions.AdderSynchronousAssertions(self.path, "AdderSynchronousAssertions")
                 adder_synchronous_assertions.configuration_adder_input_width = self.configuration_fir_lut_input_width
                 adder_synchronous_assertions.generate()
                 self.simulation_module_list.append(adder_synchronous_assertions)
-
-            if self.configuration_reduce_size_adders == False:
+                
                 adder_block_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderBlockSynchronousAssertions.AdderBlockSynchronousAssertions(self.path, "AdderBlockSynchronousAssertions")
                 adder_block_synchronous_assertions.generate()
                 self.simulation_module_list.append(adder_block_synchronous_assertions)
+            elif self.configuration_reduce_size_adders == True:
+                adder_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.AdderSynchronousReducedSizeAssertions.AdderSynchronousReducedSizeAssertions(self.path, "AdderSynchronousAssertions")
+                adder_synchronous_assertions.configuration_input0_width = self.configuration_fir_data_width
+                adder_synchronous_assertions.configuration_input1_width = self.configuration_fir_data_width
+                adder_synchronous_assertions.generate()
+                self.simulation_module_list.append(adder_synchronous_assertions)
 
             look_up_table_synchronous_assertions: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.LookUpTableSynchronousAssertions.LookUpTableSynchronousAssertions(self.path, "LookUpTableSynchronousAssertions")
             look_up_table_synchronous_assertions.configuration_input_width = self.configuration_fir_lut_input_width
@@ -1189,15 +1204,15 @@ if __name__ == '__main__':
     if simulation_result[0] == 0:
         pass
         #digital_estimator_generator.synthesize_genus()
-        digital_estimator_generator.synthesize_synopsys()
+        #digital_estimator_generator.synthesize_synopsys()
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
         #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "genus")
-        digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
+        #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
         #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_xrun.csv", synthesis_program = "genus")
         #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_vcs.csv", synthesis_program = "genus")
         #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_xrun.csv", synthesis_program = "synopsys")
-        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_vcs.csv", synthesis_program = "synopsys")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_vcs.csv", synthesis_program = "synopsys")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus", simulation_program = "xrun")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus", simulation_program = "vcs")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys", simulation_program = "xrun")
