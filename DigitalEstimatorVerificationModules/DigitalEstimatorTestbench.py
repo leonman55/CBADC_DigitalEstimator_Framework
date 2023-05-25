@@ -148,8 +148,13 @@ class DigitalEstimatorTestbench(SystemVerilogModule.SystemVerilogModule):
     initial begin
         $assertoff;
     """
-        if self.configuration_simulation_program == "vcs" and self.configuration_mapped_simulation == True:
-            content += f"""\t$dumpfile("mapped_signal_activity_{self.configuration_synthesis_program}_{self.configuration_simulation_program}.vcd");
+        if self.configuration_simulation_program == "vcs":
+            if self.configuration_mapped_simulation == True:
+                content += f"""\t$dumpfile("mapped_signal_activity_{self.configuration_synthesis_program}_{self.configuration_simulation_program}.vcd");
+        $dumpvars;
+    """
+            elif self.configuration_placedandrouted_simulation == True:
+                content += f"""\t$dumpfile("placeandroute_signal_activity_innovus_{self.configuration_synthesis_program}_{self.configuration_simulation_program}.vcd");
         $dumpvars;
     """
         content += """end

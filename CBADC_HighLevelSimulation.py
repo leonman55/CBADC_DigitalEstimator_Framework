@@ -244,13 +244,13 @@ def plot_results(path: str = "../df/sim/SystemVerilogFiles", k1: int = 512, k2: 
     except:
         pass
 
-def plot_mapped_psd(path: str = "../df/sim/SystemVerilogFiles", file_name: str = "digital_estimation_mapped_genus.csv", k1: int = 512, k2: int = 512, size: int = 1 << 14, T: float = 2.0e-8, OSR: int = 1, down_sample_rate: int = 1, synthesis_program: str = "genus"):
+def plot_mapped_psd(path: str = "../df/sim/SystemVerilogFiles", file_name: str = "digital_estimation_mapped_genus.csv", k1: int = 512, k2: int = 512, size: int = 1 << 14, T: float = 2.0e-8, OSR: int = 1, down_sample_rate: int = 1, synthesis_program: str = "genus", simulation_program: str = "xrun"):
     try:
         mapped_simulation_results: list[float] = list[float]()
         with open(path + "/" + file_name) as mapped_simulation_results_csv_file:
             for line in mapped_simulation_results_csv_file.readlines():
                 mapped_simulation_results.append(float(line.rsplit(",")[0]))
-            with open(path + "/mapped_simulation_snr_db_" + synthesis_program + ".csv", "w") as mapped_simulation_snr_db_csv_file:
+            with open(path + "/mapped_simulation_snr_db_" + synthesis_program + "_" + simulation_program + ".csv", "w") as mapped_simulation_snr_db_csv_file:
                 plt.xscale("log")
                 mapped_simulation_results_psd = plt.psd(mapped_simulation_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
                 maximum = np.max(mapped_simulation_results_psd[0])
@@ -258,13 +258,38 @@ def plot_mapped_psd(path: str = "../df/sim/SystemVerilogFiles", file_name: str =
                 noise_sum = np.sum(noise)
                 snr = maximum / noise_sum
                 snr_dB = 10 * np.log10(snr)
-                print("\tSNR dB " + synthesis_program + ": ", snr_dB)
+                print("\tSNR dB " + synthesis_program + " " + simulation_program + ": ", snr_dB)
                 mapped_simulation_snr_db_csv_file.write(str(snr_dB))
                 mapped_simulation_snr_db_csv_file.close()
-                plt.savefig(path + "/psd_log_" + synthesis_program + ".pdf")
+                plt.savefig(path + "/psd_log_" + synthesis_program + "_" + simulation_program + ".pdf")
                 plt.clf()
                 plt.psd(mapped_simulation_results_psd[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
-                plt.savefig(path + "/psd_linear_" + synthesis_program + ".pdf")
+                plt.savefig(path + "/psd_linear_" + synthesis_program + "_" + simulation_program + ".pdf")
+                plt.clf()
+    except:
+        print("No gate level simulation PSD information available!")
+
+def plot_placeandroute_psd(path: str = "../df/sim/SystemVerilogFiles", file_name: str = "digital_estimation_mapped_genus.csv", k1: int = 512, k2: int = 512, size: int = 1 << 14, T: float = 2.0e-8, OSR: int = 1, down_sample_rate: int = 1, synthesis_program: str = "genus", simulation_program: str = "xrun"):
+    try:
+        placeandroute_simulation_results: list[float] = list[float]()
+        with open(path + "/" + file_name) as placeandroute_simulation_results_csv_file:
+            for line in placeandroute_simulation_results_csv_file.readlines():
+                placeandroute_simulation_results.append(float(line.rsplit(",")[0]))
+            with open(path + "/placeandroute_simulation_snr_db_innovus_" + synthesis_program + "_" + simulation_program + ".csv", "w") as placeandroute_simulation_snr_db_csv_file:
+                plt.xscale("log")
+                placeandroute_simulation_results_psd = plt.psd(placeandroute_simulation_results[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
+                maximum = np.max(placeandroute_simulation_results_psd[0])
+                noise = placeandroute_simulation_results_psd[0][np.where(placeandroute_simulation_results_psd[0] != maximum)]
+                noise_sum = np.sum(noise)
+                snr = maximum / noise_sum
+                snr_dB = 10 * np.log10(snr)
+                print("\tSNR dB innovus " + synthesis_program + " " + simulation_program + ": ", snr_dB)
+                placeandroute_simulation_snr_db_csv_file.write(str(snr_dB))
+                placeandroute_simulation_snr_db_csv_file.close()
+                plt.savefig(path + "/psd_log_innovus_" + synthesis_program + "_" + simulation_program + ".pdf")
+                plt.clf()
+                plt.psd(placeandroute_simulation_results_psd[-(size >> 1) : ], Fs = (1.0 / (T * down_sample_rate)), window = matplotlib.mlab.window_none, NFFT = size >> 1)
+                plt.savefig(path + "/psd_linear_innovus_" + synthesis_program + "_" + simulation_program + ".pdf")
                 plt.clf()
     except:
         print("No gate level simulation PSD information available!")
@@ -1009,8 +1034,11 @@ class DigitalEstimatorParameterGenerator():
         """
         plot_results(path = self.path, k1 = self.k1, k2 = self.k2, size = self.size, T = self.T, OSR = self.OSR, down_sample_rate = self.down_sample_rate)
 
-    def plot_results_mapped(self, file_name: str = "digital_estimation_mapped_genus.csv", synthesis_program: str = "genus"):
-        plot_mapped_psd(path = self.path, file_name = file_name, k1 = self.k1, k2 = self.k2, size = self.size, T = self.T, OSR = self.OSR, down_sample_rate = self.down_sample_rate, synthesis_program = synthesis_program)
+    def plot_results_mapped(self, file_name: str = "digital_estimation_mapped_genus.csv", synthesis_program: str = "genus", simulation_program: str = "xrun"):
+        plot_mapped_psd(path = self.path, file_name = file_name, k1 = self.k1, k2 = self.k2, size = self.size, T = self.T, OSR = self.OSR, down_sample_rate = self.down_sample_rate, synthesis_program = synthesis_program, simulation_program = simulation_program)
+    
+    def plot_results_placeandroute(self, file_name: str = "digital_estimation_mapped_genus.csv", synthesis_program: str = "genus", simulation_program: str = "xrun"):
+        plot_placeandroute_psd(path = self.path, file_name = file_name, k1 = self.k1, k2 = self.k2, size = self.size, T = self.T, OSR = self.OSR, down_sample_rate = self.down_sample_rate, synthesis_program = synthesis_program, simulation_program = simulation_program)
                 
 
 if __name__ == '__main__':

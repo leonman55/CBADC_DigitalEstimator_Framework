@@ -1046,7 +1046,7 @@ class DigitalEstimatorGenerator():
         placeandroute_innovus.wait()
             
     def generate_testbench_placedandrouted_design(self, synthesis_program: str = "genus", simulation_program: str = "xrun"):
-        digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, name = "DigitalEstimatorTestbench_placedandrouted_innovus_" + synthesis_program)
+        digital_estimator_testbench: SystemVerilogModule.SystemVerilogModule = DigitalEstimatorVerificationModules.DigitalEstimatorTestbench.DigitalEstimatorTestbench(self.path, name = "DigitalEstimatorTestbench_placedandrouted_innovus_" + synthesis_program + "_" + simulation_program)
         digital_estimator_testbench.configuration_number_of_timesteps_in_clock_cycle = self.configuration_number_of_timesteps_in_clock_cycle
         digital_estimator_testbench.configuration_lookback_length = self.configuration_lookback_length
         digital_estimator_testbench.configuration_lookahead_length = self.configuration_lookahead_length
@@ -1106,7 +1106,7 @@ class DigitalEstimatorGenerator():
         placeandroute_options.append("-timescale 1ns/1ps")
         placeandroute_options.append("-top DigitalEstimatorTestbench")
         placeandroute_options.append("-input xrun_placeandroute_innovus_" + synthesis_program + ".tcl")
-        placeandroute_options.append("DigitalEstimatorTestbench_placedandrouted_innovus_" + synthesis_program + ".sv")
+        placeandroute_options.append("DigitalEstimatorTestbench_placedandrouted_innovus_" + synthesis_program + "_xrun.sv")
         placeandroute_options.append(self.top_module_name + "_elc_" + synthesis_program + ".v")
         for line in placeandroute_options:
             placeandroute_options_file.write_line_linebreak(line)
@@ -1149,7 +1149,7 @@ class DigitalEstimatorGenerator():
         placeandroute_tcl_command_file.close_output_file()
         
     def simulate_placedandrouted_design(self, synthesis_program: str = "genus"):
-        self.generate_testbench_placedandrouted_design(synthesis_program = synthesis_program)
+        self.generate_testbench_placedandrouted_design(synthesis_program = synthesis_program, simulation_program = "xrun")
         self.copy_placedandrouted_design_files_innovus(synthesis_program = synthesis_program)
         self.generate_xrun_placeandroute_simulation_script(name = "sim_placeandroute_innovus_" + synthesis_program + ".sh", synthesis_program = synthesis_program)
         self.generate_xrun_placeandroute_simulation_options_file(name = "xrun_options_placeandroute_innovus_" + synthesis_program, synthesis_program = synthesis_program)
@@ -1157,35 +1157,89 @@ class DigitalEstimatorGenerator():
         simulation_placedandrouted = subprocess.Popen(["./sim_placeandroute_innovus_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
         simulation_placedandrouted.wait()
         
+    def generate_vcs_placeandroute_simulation_file(self, name: str = "sim_vcs_placeandroute_innovus_genus.sh", synthesis_program: str = "genus"):
+        """Generates the script for the RTL simulation with Synopsys VCS.
+        """
+        simulation_file: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        simulation_file.set_path(self.path)
+        simulation_file.set_name(name)
+        simulation_file.open_output_file()
+
+        settings: list[str] = list[str]()
+        settings.append("vcs -f vcs_placeandroute_options_innovus_" + synthesis_program)
+        settings.append("./simv")
+        settings.append("rm simv")
+        settings.append("rm -R ./csrc")
+        settings.append("rm -R simv.daidir")
+        #settings.append("rm -R waves.shm")
+        for line in settings:
+            simulation_file.write_line_linebreak(line)
+        simulation_file.close_output_file()
+        Path(self.path + "/" + name).chmod(S_IRWXU)
+
+    def generate_vcs_placeandroute_options_file(self, name: str = "vcs_placeandroute_options_innovus_genus", synthesis_program: str = "genus"):
+        """Generates the options file used for the RTL simulation with Synopsys VCS.
+        """
+        options_file: FileGenerator.FileGenerator = FileGenerator.FileGenerator()
+        options_file.set_path(self.path)
+        options_file.set_name(name)
+        options_file.open_output_file()
+
+        options: list[str] = list[str]()
+        options.append("-sverilog")
+        options.append("-timescale=1ns/1ps")
+        options.append("/eda/kits/stm/28nm_fdsoi_v1.3a/C28SOI_SC_12_CORE_LR/5.1-05.81/behaviour/verilog/C28SOI_SC_12_CORE_LR.v")
+        options.append("/eda/kits/stm/28nm_fdsoi_v1.3a/C28SOI_SC_12_CLK_LR/5.1-06.81/behaviour/verilog/C28SOI_SC_12_CLK_LR.v")
+        options.append("/eda/kits/stm/28nm_fdsoi_v1.3a/C28SOI_SC_12_PR_LR/5.3.a-00.80/behaviour/verilog/C28SOI_SC_12_PR_LR.v")
+        options.append("DigitalEstimatorTestbench_placedandrouted_innovus_" + synthesis_program + "_vcs.sv")
+        options.append(self.top_module_name + "_elc_" + synthesis_program + ".v") 
+        for line in options:
+            options_file.write_line_linebreak(line)
+        options_file.close_output_file()
+
+    def simulate_vcs_placeandroute(self, synthesis_program: str = "genus"):
+        self.generate_testbench_placedandrouted_design(synthesis_program = synthesis_program, simulation_program = "vcs")
+        self.copy_placedandrouted_design_files_innovus(synthesis_program = synthesis_program)
+        self.generate_vcs_placeandroute_simulation_file(name = "sim_vcs_placeandroute_innovus_" + synthesis_program + ".sh", synthesis_program = synthesis_program)
+        self.generate_vcs_placeandroute_options_file(name = "vcs_placeandroute_options_innovus_" + synthesis_program, synthesis_program = synthesis_program)
+        sim_vcs_placeandroute = subprocess.Popen(["./sim_vcs_placeandroute_innovus_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
+        sim_vcs_placeandroute.wait()
+        
     def copy_primetime_power_placeandroute_tcl_script(self):
         shutil.copyfile(self.scripts_base_folder + "/primetime_power_template_placeandroute.tcl", self.path + "/primetime_power_estimation_placeandroute.tcl")
 
-    def generate_primetime_power_placeandroute_script(self, synthesis_program: str = "genus"):
+    def generate_primetime_power_placeandroute_script(self, synthesis_program: str = "genus", simulation_program: str = "xrun"):
         commands: list[str] = list[str]()
         commands.append("SYNTHESIS_PROGRAM=" + synthesis_program + "\n")
+        commands.append("SIMULATION_PROGRAM=" + simulation_program + "\n")
         commands.append("PLACEDANDROUTED_DESIGN_FILE=./" + self.top_module_name + "_physical_" + synthesis_program + ".v\n")
         commands.append("PLACEDANDROUTED_DESIGN_NAME=" + self.top_module_name + "\n")
         commands.append("SDF_FILE=./" + self.top_module_name + "_final_" + synthesis_program + ".sdf\n")
-        commands.append("VCD_FILE=./placeandroute_signal_activity_innovus_" + synthesis_program + ".vcd\n")
+        if simulation_program == "xrun":
+            commands.append("VCD_FILE=./placeandroute_signal_activity_innovus_" + synthesis_program + ".vcd\n")
+        elif simulation_program == "vcs":
+            commands.append("VCD_FILE=./placeandroute_signal_activity_innovus_" + synthesis_program + "_vcs.vcd\n")
         commands.append("export SYNTHESIS_PROGRAM\n")
+        commands.append("export SIMULATION_PROGRAM\n")
         commands.append("export PLACEDANDROUTED_DESIGN_FILE\n")
         commands.append("export PLACEDANDROUTED_DESIGN_NAME\n")
         commands.append("export SDF_FILE\n")
         commands.append("export VCD_FILE\n")
         commands.append("primetime -file primetime_power_estimation_placeandroute.tcl\n")
         commands.append("SYNTHESIS_PROGRAM=\n")
+        commands.append("SIMULATION_PROGRAM=")
         commands.append("PLACEDANDROUTED_DESIGN_FILE=\n")
         commands.append("PLACEDANDROUTED_DESIGN_NAME=\n")
         commands.append("SDF_FILE=\n")
         commands.append("VCD_FILE=\n")
-        with open(self.path + "/run_primetime_power_estimation_placeandroute_" + synthesis_program + ".sh", "w") as primetime_power_script:
+        with open(self.path + "/run_primetime_power_estimation_placeandroute_" + synthesis_program + "_" + simulation_program + ".sh", "w") as primetime_power_script:
             primetime_power_script.writelines(commands)
-            Path(self.path + "/run_primetime_power_estimation_placeandroute_" + synthesis_program + ".sh").chmod(S_IRWXU)
+            Path(self.path + "/run_primetime_power_estimation_placeandroute_" + synthesis_program + "_" + simulation_program + ".sh").chmod(S_IRWXU)
 
-    def estimate_power_primetime_placeandroute(self, synthesis_program: str = "genus"):
+    def estimate_power_primetime_placeandroute(self, synthesis_program: str = "genus", simulation_program: str = "xrun"):
         self.copy_primetime_power_placeandroute_tcl_script()
-        self.generate_primetime_power_placeandroute_script(synthesis_program = synthesis_program)
-        power_estimation_primetime_placeandroute = subprocess.Popen(["./run_primetime_power_estimation_placeandroute_" + synthesis_program + ".sh"], cwd = self.path, text = True, shell = True)
+        self.generate_primetime_power_placeandroute_script(synthesis_program = synthesis_program, simulation_program = simulation_program)
+        power_estimation_primetime_placeandroute = subprocess.Popen(["./run_primetime_power_estimation_placeandroute_" + synthesis_program + "_" + simulation_program + ".sh"], cwd = self.path, text = True, shell = True)
         power_estimation_primetime_placeandroute.wait()
         
 
@@ -1209,10 +1263,10 @@ if __name__ == '__main__':
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
         #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "genus")
         #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
-        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_xrun.csv", synthesis_program = "genus")
-        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_vcs.csv", synthesis_program = "genus")
-        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_xrun.csv", synthesis_program = "synopsys")
-        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_vcs.csv", synthesis_program = "synopsys")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_xrun.csv", synthesis_program = "genus", simulation_program = "xrun")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_xrun.csv", synthesis_program = "synopsys", simulation_program = "xrun")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_vcs.csv", synthesis_program = "genus", simulation_program = "vcs")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_vcs.csv", synthesis_program = "synopsys", simulation_program = "vcs")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus", simulation_program = "xrun")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus", simulation_program = "vcs")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys", simulation_program = "xrun")
@@ -1221,6 +1275,14 @@ if __name__ == '__main__':
         #digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
         
         #digital_estimator_generator.simulate_placedandrouted_design("genus")
-        #digital_estimator_generator.estimate_power_primetime_placeandroute("genus")
         #digital_estimator_generator.simulate_placedandrouted_design("synopsys")
-        #digital_estimator_generator.estimate_power_primetime_placeandroute("synopsys")
+        #digital_estimator_generator.simulate_vcs_placeandroute(synthesis_program = "genus")
+        #digital_estimator_generator.simulate_vcs_placeandroute(synthesis_program = "synopsys")
+        #digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_genus_xrun.csv", synthesis_program = "genus", simulation_program = "xrun")
+        #digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_synopsys_xrun.csv", synthesis_program = "synopsys", simulation_program = "xrun")
+        #digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_genus_vcs.csv", synthesis_program = "genus", simulation_program = "vcs")
+        #digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_synopsys_vcs.csv", synthesis_program = "synopsys", simulation_program = "vcs")
+        #digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "genus", simulation_program = "xrun")
+        #digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "synopsys", simulation_program = "xrun")
+        #digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "genus", simulation_program = "vcs")
+        #digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "synopsys", simulation_program = "vcs")
