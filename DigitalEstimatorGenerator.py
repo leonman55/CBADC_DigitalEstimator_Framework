@@ -117,9 +117,9 @@ class DigitalEstimatorGenerator():
     configuration_n_number_of_analog_states: int = 3
     #configuration_n_number_of_analog_states: int = 7
     configuration_m_number_of_digital_states: int = configuration_n_number_of_analog_states
-    configuration_lookback_length: int = 32
+    configuration_lookback_length: int = 224
     #configuration_lookback_length: int = 256
-    configuration_lookahead_length: int = 32
+    configuration_lookahead_length: int = 224
     #configuration_lookahead_length: int = 256
     configuration_fir_data_width: int = 22
     #configuration_fir_data_width: int = 25
@@ -129,12 +129,12 @@ class DigitalEstimatorGenerator():
     #configuration_over_sample_rate: int = 8
     configuration_down_sample_rate: int = configuration_over_sample_rate
     configuration_counter_type: str = "binary"
-    configuration_combinatorial_synchronous: str = "combinatorial"
+    configuration_combinatorial_synchronous: str = "synchronous"
     configuration_required_snr_db: float = 55
     configuration_coefficients_variable_fixed: str = "fixed"
     configuration_reduce_size_coefficients: bool = True
-    configuration_reduce_size_luts: bool = True
-    configuration_reduce_size_adders: bool = True
+    configuration_reduce_size_luts: bool = False
+    configuration_reduce_size_adders: bool = False
 
     high_level_simulation: CBADC_HighLevelSimulation.DigitalEstimatorParameterGenerator = None
 
@@ -219,12 +219,16 @@ class DigitalEstimatorGenerator():
         
         if self.configuration_reduce_size_coefficients == True:
             lookback_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hb_matrix, self.configuration_fir_lut_input_width)
+            print(lookback_lut_entries)
             lookback_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
             lookback_lut_entries_bit_mapping: tuple[list[list[int]], int] = CBADC_HighLevelSimulation.get_lut_entry_bit_mapping(lut_entry_matrix = lookback_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
             lookback_lut_entries_max_widths = CBADC_HighLevelSimulation.get_maximum_bitwidth_per_lut(lookback_lut_entries_bit_mapping[0])
+            print(lookback_lut_entries_max_widths)
             lookback_lut_entries_max_widths_average = statistics.mean(lookback_lut_entries_max_widths)
             lookback_lut_entries_max_widths_sorted: list[tuple[int, int]] = CBADC_HighLevelSimulation.sort_luts_by_size(lookback_lut_entries_max_widths)
+            print(lookback_lut_entries_max_widths_sorted)
             lookback_lut_entries_mapped_reordered: list[list[int]] = CBADC_HighLevelSimulation.reorder_lut_entries(lookback_lut_entries_mapped, lookback_lut_entries_max_widths_sorted)
+            print(lookback_lut_entries_mapped_reordered)
             print("LUT entries: \n", lookback_lut_entries)
             print("Mapped LUT entries: \n", lookback_lut_entries_mapped)
             print("LUT entry bit mapping: \n", lookback_lut_entries_bit_mapping[0])
@@ -234,6 +238,8 @@ class DigitalEstimatorGenerator():
             print("Average bit width: ", lookback_lut_entries_max_widths_average)
             print("Possible savings on registers with average maximum bit width: ", str(100.0 * (self.configuration_fir_data_width - lookback_lut_entries_max_widths_average) / self.configuration_fir_data_width), "%")
             print("Sorted maximum widhts per LUT: \n", lookback_lut_entries_max_widths_sorted)
+            for lut_max_width in lookback_lut_entries_max_widths_sorted:
+                print(str(lut_max_width[0]) + ",")
             print("Reordered mapped LUT entries: \n", lookback_lut_entries_mapped_reordered)
             lookahead_lut_entries = CBADC_HighLevelSimulation.convert_coefficient_matrix_to_lut_entries(self.high_level_simulation.fir_hf_matrix, self.configuration_fir_lut_input_width)
             lookahead_lut_entries_mapped = CBADC_HighLevelSimulation.map_lut_entries_to_luts(lut_entries = lookahead_lut_entries, lut_input_width = self.configuration_fir_lut_input_width)
@@ -1251,9 +1257,9 @@ if __name__ == '__main__':
     """
     digital_estimator_generator: DigitalEstimatorGenerator = DigitalEstimatorGenerator()
     digital_estimator_generator.generate()
-    #simulation_result: tuple[int, str] = (0, "Skip simulation.")
-    simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
-    simulation_result: tuple[int, str] = (0, "Ignore fails in simulation.")
+    simulation_result: tuple[int, str] = (0, "Skip simulation.")
+    #simulation_result: tuple[int, str] = digital_estimator_generator.simulate()
+    #simulation_result: tuple[int, str] = (0, "Ignore fails in simulation.")
     #digital_estimator_generator.simulate_vcs()
     if simulation_result[0] == 0:
         pass

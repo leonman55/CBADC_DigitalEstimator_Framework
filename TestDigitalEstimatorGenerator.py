@@ -82,36 +82,36 @@ def test_digital_estimator_generator(
     simulation_result: tuple[int, str] = (0, "Ignore fails in simulation.")
     #digital_estimator_generator.simulate_vcs()
     if simulation_result[0] == 0:
-        #pass
-        #digital_estimator_generator.synthesize_genus()
-        digital_estimator_generator.synthesize_synopsys()
+        pass
+        digital_estimator_generator.synthesize_genus()
+        #digital_estimator_generator.synthesize_synopsys()
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "genus")
         #digital_estimator_generator.simulate_mapped_design(synthesis_program = "synopsys")
-        #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "genus")
-        digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
+        digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "genus")
+        #digital_estimator_generator.simulate_vcs_mapped(synthesis_program = "synopsys")
         #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_xrun.csv", synthesis_program = "genus", simulation_program = "xrun")
         #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_xrun.csv", synthesis_program = "synopsys", simulation_program = "xrun")
-        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_vcs.csv", synthesis_program = "genus", simulation_program = "vcs")
-        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_vcs.csv", synthesis_program = "synopsys", simulation_program = "vcs")
+        digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_genus_vcs.csv", synthesis_program = "genus", simulation_program = "vcs")
+        #digital_estimator_generator.high_level_simulation.plot_results_mapped(file_name = "digital_estimation_mapped_synopsys_vcs.csv", synthesis_program = "synopsys", simulation_program = "vcs")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus", simulation_program = "xrun")
-        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus", simulation_program = "vcs")
+        digital_estimator_generator.estimate_power_primetime(synthesis_program = "genus", simulation_program = "vcs")
         #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys", simulation_program = "xrun")
-        digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys", simulation_program = "vcs")
-        #digital_estimator_generator.placeandroute_innovus(synthesis_program = "genus")
-        digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
+        #digital_estimator_generator.estimate_power_primetime(synthesis_program = "synopsys", simulation_program = "vcs")
+        digital_estimator_generator.placeandroute_innovus(synthesis_program = "genus")
+        #digital_estimator_generator.placeandroute_innovus(synthesis_program = "synopsys")
         
         #digital_estimator_generator.simulate_placedandrouted_design("genus")
         #digital_estimator_generator.simulate_placedandrouted_design("synopsys")
-        #digital_estimator_generator.simulate_vcs_placeandroute("genus")
-        digital_estimator_generator.simulate_vcs_placeandroute("synopsys")
+        digital_estimator_generator.simulate_vcs_placeandroute("genus")
+        #digital_estimator_generator.simulate_vcs_placeandroute("synopsys")
         #digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_genus_xrun.csv", synthesis_program = "genus", simulation_program = "xrun")
         #digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_synopsys_xrun.csv", synthesis_program = "synopsys", simulation_program = "xrun")
-        #digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_genus_vcs.csv", synthesis_program = "genus", simulation_program = "vcs")
-        digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_synopsys_vcs.csv", synthesis_program = "synopsys", simulation_program = "vcs")
+        digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_genus_vcs.csv", synthesis_program = "genus", simulation_program = "vcs")
+        #digital_estimator_generator.high_level_simulation.plot_results_placeandroute(file_name = "digital_estimation_placedandrouted_innovus_synopsys_vcs.csv", synthesis_program = "synopsys", simulation_program = "vcs")
         #digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "genus", simulation_program = "xrun")
         #digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "synopsys", simulation_program = "xrun")
-        #digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "genus", simulation_program = "vcs")
-        digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "synopsys", simulation_program = "vcs")
+        digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "genus", simulation_program = "vcs")
+        #digital_estimator_generator.estimate_power_primetime_placeandroute(synthesis_program = "synopsys", simulation_program = "vcs")
 
 
 
@@ -232,6 +232,32 @@ test_fixed_reduced_configurations_1 = [
 @pytest.mark.test_fixed_reduced_configurations_1
 @pytest.mark.parametrize(("n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width", "counter_type", "combinatorial_synchronous", "coefficients_variable_fixed", "reduce_size_coefficients", "reduce_size_luts", "reduce_size_adders"), test_fixed_reduced_configurations_1)
 def test_fixed_reduced_configurations_1(n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int, counter_type: str, combinatorial_synchronous: str, coefficients_variable_fixed: str, reduce_size_coefficients: bool, reduce_size_luts: bool, reduce_size_adders: bool):
+    test_digital_estimator_generator(n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width, counter_type = counter_type, combinatorial_synchronous = combinatorial_synchronous, coefficients_variable_fixed = coefficients_variable_fixed, reduce_size_coefficients = reduce_size_coefficients, reduce_size_luts = reduce_size_luts, reduce_size_adders = reduce_size_adders)
+    
+
+test_reduction_stages_variable_0 = [
+        (3, 23, 22, 128, 128, 2, "binary", "synchronous", "variable", False, False, False)
+        #(3, 23, 22, 128, 128, 2, "binary", "synchronous", "variable", True, False, False),
+        #(3, 23, 22, 128, 128, 2, "binary", "synchronous", "variable", True, True, False),
+        #(3, 23, 22, 128, 128, 2, "binary", "synchronous", "variable", True, True, True)
+    ]
+
+@pytest.mark.test_reduction_stages_variable_0
+@pytest.mark.parametrize(("n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width", "counter_type", "combinatorial_synchronous", "coefficients_variable_fixed", "reduce_size_coefficients", "reduce_size_luts", "reduce_size_adders"), test_reduction_stages_variable_0)
+def test_reduction_stages_variable_0(n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int, counter_type: str, combinatorial_synchronous: str, coefficients_variable_fixed: str, reduce_size_coefficients: bool, reduce_size_luts: bool, reduce_size_adders: bool):
+    test_digital_estimator_generator(n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width, counter_type = counter_type, combinatorial_synchronous = combinatorial_synchronous, coefficients_variable_fixed = coefficients_variable_fixed, reduce_size_coefficients = reduce_size_coefficients, reduce_size_luts = reduce_size_luts, reduce_size_adders = reduce_size_adders)
+    
+    
+test_reduction_stages_fixed_0 = [
+        (3, 23, 22, 128, 128, 4, "binary", "synchronous", "fixed", False, False, False),
+        (3, 23, 22, 128, 128, 4, "binary", "synchronous", "fixed", True, False, False),
+        #(3, 23, 22, 128, 128, 4, "binary", "synchronous", "fixed", True, True, False),
+        (3, 23, 22, 128, 128, 4, "binary", "synchronous", "fixed", True, True, True)
+    ]
+
+@pytest.mark.test_reduction_stages_fixed_0
+@pytest.mark.parametrize(("n_number_of_analog_states", "oversampling_rate", "bit_width", "lookback_length", "lookahead_length", "lut_input_width", "counter_type", "combinatorial_synchronous", "coefficients_variable_fixed", "reduce_size_coefficients", "reduce_size_luts", "reduce_size_adders"), test_reduction_stages_fixed_0)
+def test_reduction_stages_fixed_0(n_number_of_analog_states: int, oversampling_rate: int, bit_width: int, lookback_length: int, lookahead_length: int, lut_input_width: int, counter_type: str, combinatorial_synchronous: str, coefficients_variable_fixed: str, reduce_size_coefficients: bool, reduce_size_luts: bool, reduce_size_adders: bool):
     test_digital_estimator_generator(n_number_of_analog_states = n_number_of_analog_states, oversampling_rate = oversampling_rate, bit_width = bit_width, lookback_length = lookback_length, lookahead_length = lookahead_length, lut_input_width = lut_input_width, counter_type = counter_type, combinatorial_synchronous = combinatorial_synchronous, coefficients_variable_fixed = coefficients_variable_fixed, reduce_size_coefficients = reduce_size_coefficients, reduce_size_luts = reduce_size_luts, reduce_size_adders = reduce_size_adders)
 
 
